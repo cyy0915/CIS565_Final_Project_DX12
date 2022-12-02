@@ -19,6 +19,7 @@ set( SHADER_FILES
     shaders/VertexShader.hlsl
     shaders/UnlitPixelShader.hlsl
     shaders/PixelShader.hlsl
+    shaders/ComputeShader.hlsl
 )
 
 source_group( "Resources\\Shaders" FILES ${SHADER_FILES} )
