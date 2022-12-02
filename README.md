@@ -12,4 +12,5 @@ For more instructions see [Getting Started](https://github.com/jpvanoosten/Learn
 
 
 # Readme
-暂时用samples/tutorial3作basecode，正在写一个compute shader类方便创建compute shader pipeline. 现在暂时可参考tutorial3.cpp里的raytrace函数和里面用到的变量的初始化部分
+暂时用samples/tutorial3作basecode
+在dx12lib中完成了一个ComputeShader类用作compute shader示例，该类可以视为cuda的一个kernel函数，该类输入一个颜色，输出一张这个颜色的texture，compute shader每一个thread为texture中一个像素点赋值。代码文件中的注释说明了一些用法
