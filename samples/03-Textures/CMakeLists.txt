@@ -43,6 +43,11 @@ set_source_files_properties( shaders/PixelShader.hlsl shaders/UnlitPixelShader.h
         VS_SHADER_TYPE Pixel
 )
 
+set_source_files_properties( shaders/ComputeShader.hlsl 
+    PROPERTIES 
+        VS_SHADER_TYPE Compute
+)
+
 add_executable( 03-Textures WIN32
     ${HEADER_FILES}
     ${SRC_FILES}

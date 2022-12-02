@@ -39,6 +39,7 @@ set( HEADER_FILES
     inc/dx12lib/VertexTypes.h
     inc/dx12lib/VertexBuffer.h
     inc/dx12lib/Visitor.h
+    inc/dx12lib/ComputeShader.h
 )
 
 set( SOURCE_FILES
@@ -77,6 +78,7 @@ set( SOURCE_FILES
     src/UploadBuffer.cpp
     src/VertexBuffer.cpp
     src/VertexTypes.cpp
+    src/ComputeShader.cpp
 )
 
 set( IMGUI_HEADERS
@@ -106,6 +108,7 @@ set( SHADER_FILES
     Resources/Shaders/PanoToCubemap_CS.hlsl
     Resources/Shaders/ImGUI_VS.hlsl
     Resources/Shaders/ImGUI_PS.hlsl
+    Resources/Shaders/ComputeShader.hlsl
 )
 
 set( RESOURCE_FILES 
@@ -191,4 +194,10 @@ set_source_files_properties( Resources/Shaders/ImGUI_PS.hlsl
     PROPERTIES
         VS_SHADER_TYPE Pixel
         VS_SHADER_VARIABLE_NAME g_ImGUI_PS
+)
+
+set_source_files_properties( Resources/Shaders/ComputeShader.hlsl
+    PROPERTIES
+        VS_SHADER_TYPE Compute
+        VS_SHADER_VARIABLE_NAME g_ComputeShader
 )
