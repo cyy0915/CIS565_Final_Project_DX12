@@ -32,6 +32,7 @@
 
 
 #include <DirectXMath.h>
+using namespace DirectX;
 
 // When performing transformations on the camera, 
 // it is sometimes useful to express which space this 
@@ -40,6 +41,14 @@ enum class Space
 {
     Local,
     World,
+};
+
+struct alignas(16) ComputeCameraData {
+    XMVECTOR position;
+    XMFLOAT2 pixelLength;
+    XMFLOAT2 resolution;
+    XMMATRIX cameraToWorld;
+    XMMATRIX projection;
 };
 
 class Camera
@@ -94,6 +103,8 @@ public:
     void XM_CALLCONV Translate( DirectX::FXMVECTOR translation, Space space = Space::Local );
     void Rotate( DirectX::FXMVECTOR quaternion );
 
+    ComputeCameraData getData(int width, int height);
+
 protected:
     virtual void UpdateViewMatrix() const;
     virtual void UpdateInverseViewMatrix() const;
@@ -125,6 +136,8 @@ protected:
     mutable bool m_ViewDirty, m_InverseViewDirty;
     // True if the projection matrix needs to be updated.
     mutable bool m_ProjectionDirty, m_InverseProjectionDirty;
+
+    XMFLOAT2 m_resolution;
 
 private:
 

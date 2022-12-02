@@ -37,6 +37,7 @@
 #include <GameFramework/GameFramework.h>
 
 #include <dx12lib/RenderTarget.h>
+#include <dx12lib/ShaderResourceView.h>
 
 #include <cstdint>  // For uint32_t
 #include <memory>   // For std::unique_ptr and std::smart_ptr
@@ -85,6 +86,8 @@ protected:
      *  Update the game logic.
      */
     void OnUpdate( UpdateEventArgs& e );
+    void rasterize(std::shared_ptr<dx12lib::CommandList> commandList);
+    void rayTrace(std::shared_ptr<dx12lib::CommandList> commandList);
     void OnRender();
     void OnGUI( const std::shared_ptr<dx12lib::CommandList>& commandList, const dx12lib::RenderTarget& renderTarget );
 
@@ -133,16 +136,21 @@ private:
     std::shared_ptr<dx12lib::Texture> m_DirectXTexture;
     std::shared_ptr<dx12lib::Texture> m_EarthTexture;
     std::shared_ptr<dx12lib::Texture> m_MonaLisaTexture;
+    std::shared_ptr<dx12lib::Texture> m_OutTexture;
+    std::shared_ptr<dx12lib::ShaderResourceView> m_depthSRV;
 
     // Render target
     dx12lib::RenderTarget m_RenderTarget;
 
     // Root signature
     std::shared_ptr<dx12lib::RootSignature> m_RootSignature;
+    std::shared_ptr<dx12lib::RootSignature> m_ComputeRootSignature;
 
     // Pipeline state object.
     std::shared_ptr<dx12lib::PipelineStateObject> m_PipelineState;
     std::shared_ptr<dx12lib::PipelineStateObject> m_UnlitPipelineState;
+    std::shared_ptr<dx12lib::PipelineStateObject> m_ComputePipelineState;
+
 
     D3D12_VIEWPORT m_Viewport;
     D3D12_RECT     m_ScissorRect;

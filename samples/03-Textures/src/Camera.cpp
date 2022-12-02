@@ -191,3 +191,14 @@ void Camera::UpdateInverseProjectionMatrix() const
     pData->m_InverseProjectionMatrix = XMMatrixInverse( nullptr, pData->m_ProjectionMatrix );
     m_InverseProjectionDirty = false;
 }
+
+ComputeCameraData Camera::getData(int width, int height) {
+    ComputeCameraData d;
+    d.position = get_Translation();
+    d.resolution = { (float)width, (float)height };
+    d.cameraToWorld = get_InverseViewMatrix();
+    float pl = tan(m_vFoV / 2.f) / (float)height * 2.f;
+    d.pixelLength = { pl, pl };
+    d.projection = get_ProjectionMatrix();
+    return d;
+}
