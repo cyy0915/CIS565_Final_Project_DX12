@@ -40,6 +40,9 @@ set( HEADER_FILES
     inc/dx12lib/VertexBuffer.h
     inc/dx12lib/Visitor.h
     inc/dx12lib/ComputeShader.h
+    inc/dx12lib/bvhTree.h
+    inc/dx12lib/sceneStructs.h
+
 )
 
 set( SOURCE_FILES
@@ -79,6 +82,8 @@ set( SOURCE_FILES
     src/VertexBuffer.cpp
     src/VertexTypes.cpp
     src/ComputeShader.cpp
+    src/bvhTree.cpp
+   
 )
 
 set( IMGUI_HEADERS

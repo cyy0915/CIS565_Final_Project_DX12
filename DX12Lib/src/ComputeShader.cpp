@@ -13,7 +13,7 @@
 
 using namespace dx12lib;
 
-ComputeShader::ComputeShader(std::shared_ptr<Device> device, int w, int h) : m_Width(w), m_Height(h)
+ComputeShader::ComputeShader(std::shared_ptr<Device> device, glm::ivec3 resolution) : m_Resolution(resolution)
 {
 
     //Create root signature
@@ -22,19 +22,15 @@ ComputeShader::ComputeShader(std::shared_ptr<Device> device, int w, int h) : m_W
     CD3DX12_DESCRIPTOR_RANGE1 resultUAV(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 
     CD3DX12_ROOT_PARAMETER1 rootParameters[ComputeShaderParm::NumRootParameters];
-    rootParameters[ComputeShaderParm::Parm1].InitAsConstants(sizeof(ConstantBuffer) / 4, 0);
-    rootParameters[ComputeShaderParm::Result].InitAsDescriptorTable(1, &resultUAV);
+    rootParameters[ComputeShaderParm::sdf].InitAsConstants(sizeof(SDFGPU) / 4, 0);
+    rootParameters[ComputeShaderParm::SDFGrids].InitAsUnorderedAccessView(0);
+    rootParameters[ComputeShaderParm::bvhNodes].InitAsShaderResourceView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_NONE, D3D12_SHADER_VISIBILITY_ALL);
+    rootParameters[ComputeShaderParm::geoms].InitAsShaderResourceView(1);
+
     //rootParameters[GenerateMips::SrcMip].InitAsDescriptorTable(1, &srcMip);
 
-    CD3DX12_STATIC_SAMPLER_DESC linearClampSampler(0, D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-        D3D12_TEXTURE_ADDRESS_MODE_CLAMP, D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-        D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
-
-    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(ComputeShaderParm::NumRootParameters, rootParameters, 1,
-        &linearClampSampler);
-
+    CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(ComputeShaderParm::NumRootParameters, rootParameters);
     m_RootSignature = device->CreateRootSignature(rootSignatureDesc.Desc_1_1);
-
 
     // Create the PSO
     struct PipelineStateStream
@@ -51,24 +47,31 @@ ComputeShader::ComputeShader(std::shared_ptr<Device> device, int w, int h) : m_W
 
     //Create result texture 
     //格式可以改为不同格式
-    auto desc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, m_Width, m_Height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-    m_ResultTexture = device->CreateTexture(desc);
+    m_Result = device->CreateStructuredBuffer(resolution.x * resolution.y * resolution.z, sizeof(SDFGrid));
 }
 
-void ComputeShader::resize(int w, int h) {
-    m_Width = w;
-    m_Height = h;
-    m_ResultTexture->Resize(w, h);
-}
+//void ComputeShader::resize(int w, int h) {
+//    m_Width = w;
+//    m_Height = h;
+//
+//    m_ResultTexture->Resize(w, h);
+//}
 
-void ComputeShader::dispatch(std::shared_ptr<CommandList> commandList, DirectX::XMFLOAT4 color) {
+void ComputeShader::dispatch(std::shared_ptr<CommandList> commandList, SDF sdf, BVHTree& bvhTree, std::vector<Geom> geoms) {
     commandList->SetPipelineState(m_PipelineState);
     commandList->SetComputeRootSignature(m_RootSignature);
 
     //传参
-    commandList->SetCompute32BitConstants(ComputeShaderParm::Parm1, ConstantBuffer({color}));
-    commandList->SetUnorderedAccessView(ComputeShaderParm::Result, 0, m_ResultTexture, 0);
+    commandList->SetCompute32BitConstants(ComputeShaderParm::sdf, sdf.getGPUData());
+    std::vector<BVHNodeGPU> bvhDatas;
+    bvhTree.getGPUData(bvhDatas);
+    commandList->SetComputeDynamicStructuredBuffer(ComputeShaderParm::bvhNodes, bvhDatas);
+    std::vector<GeomGPU> geomDatas;
+    for (auto g : geoms) {
+        geomDatas.push_back(g.getGPUData());
+    }
+    commandList->SetComputeDynamicStructuredBuffer(ComputeShaderParm::geoms, geomDatas);
+    commandList->SetUnorderedAccessView(ComputeShaderParm::SDFGrids, m_Result);
 
-    Math::DivideByMultiple(m_Width, 8);
-    commandList->Dispatch(Math::DivideByMultiple(m_Width, 8), Math::DivideByMultiple(m_Height, 8));
+    commandList->Dispatch(Math::DivideByMultiple(m_Resolution.x, 8), Math::DivideByMultiple(m_Resolution.y, 8), Math::DivideByMultiple(m_Resolution.z, 8));
 }

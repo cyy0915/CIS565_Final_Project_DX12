@@ -1281,6 +1281,19 @@ void CommandList::SetGraphicsDynamicStructuredBuffer( uint32_t slot, size_t numE
 
     m_d3d12CommandList->SetGraphicsRootShaderResourceView( slot, heapAllocation.GPU );
 }
+
+void CommandList::SetComputeDynamicStructuredBuffer(uint32_t slot, size_t numElements, size_t elementSize,
+    const void* bufferData)
+{
+    size_t bufferSize = numElements * elementSize;
+
+    auto heapAllocation = m_UploadBuffer->Allocate(bufferSize, elementSize);
+
+    memcpy(heapAllocation.CPU, bufferData, bufferSize);
+
+    m_d3d12CommandList->SetComputeRootShaderResourceView(slot, heapAllocation.GPU);
+}
+
 void CommandList::SetViewport( const D3D12_VIEWPORT& viewport )
 {
     SetViewports( { viewport } );

@@ -422,6 +422,17 @@ public:
     }
 
     /**
+     * Set dynamic structured buffer contents.
+     */
+    void SetComputeDynamicStructuredBuffer(uint32_t slot, size_t numElements, size_t elementSize,
+        const void* bufferData);
+    template<typename T>
+    void SetComputeDynamicStructuredBuffer(uint32_t slot, const std::vector<T>& bufferData)
+    {
+        SetComputeDynamicStructuredBuffer(slot, bufferData.size(), sizeof(T), bufferData.data());
+    }
+
+    /**
      * Set viewports.
      */
     void SetViewport( const D3D12_VIEWPORT& viewport );
