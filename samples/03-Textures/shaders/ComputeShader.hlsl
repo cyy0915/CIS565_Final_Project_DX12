@@ -191,7 +191,7 @@ void generateRayFromCamera(in float pixelx, in float pixely, out Ray ray)
     ray.dirVS = pPixel;
     ray.ss = true;
 }
-void generateRandomSample()
+float generateRandomSample(int min,int max)
 {
     
 }
@@ -203,7 +203,7 @@ void ComputeRadianceCache(
     float3 normal)
 {
     thrust::uniform_real_distribution <float> u01(0, 1);
-    
+
     double factor = 2 * PI / SAMPLE_COUNT;
     // generate n sample light
     for (int i = 0; i < SAMPLE_COUNT; i++)
@@ -233,10 +233,12 @@ void ComputeRadianceCache(
         }
 
         // Use not-normal direction to generate two perpendicular directions
-        float3 perpendicularDirection1 =
-            glm::normalize(glm::cross(normal, directionNotNormal));
-        float3 perpendicularDirection2 =
-            glm::normalize(glm::cross(normal, perpendicularDirection1));
+        float3 crossProduct_1 = cross(normal, directionNotNormal);
+
+        
+        float3 perpendicularDirection1 = normalize(crossProduct_1);
+        float3 crossProduct_2 = cross(normal, perpendicularDirection1);
+        float3 perpendicularDirection2 =normalize(crossProduct_2);
 
         float3 rayDir = up * normal
             + cos(around) * over * perpendicularDirection1
