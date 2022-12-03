@@ -1,5 +1,135 @@
 #define BLOCK_SIZE 8
 
+#define SAMPLE_COUNT 500
+
+//Hemisphere Harmonic Coefficient
+//reference: 
+//(0,0) (m=0,l=0)
+#define HSH_COEFFICIENT_0 0.398942280f
+//(-1,1) (m=-1,l=1)
+#define HSH_COEFFICIENT_1 0.488602512f
+//(0,1)(m=0,l=1)
+#define HSH_COEFFICIENT_2 0.690988299f
+//(1,1)(m=1,l=1)
+#define HSH_COEFFICIENT_3 0.488602512f
+//(-2,2)(m=-2,l=2)
+#define HSH_COEFFICIENT_4 0.182091405f
+//(-1,2)(m=-1,l=2)
+#define HSH_COEFFICIENT_5 0.364182810f
+//(0,2)(m=0,l=2)
+#define HSH_COEFFICIENT_6 0.892062058f
+//(1,2)(m=1,l=2)
+#define HSH_COEFFICIENT_7 0.364182810f
+//(2,2)(m=2,l=2)
+#define HSH_COEFFICIENT_8 0.182091405f
+
+#define PI   3.1415926535897932384626422832795028841971f
+#define SQRT_OF_ONE_THIRD 0.5773502691896257645091487805019574556476f
+
+static const float HemisphereHarmonicCoefficient[9] =
+{HSH_COEFFICIENT_0, HSH_COEFFICIENT_1, HSH_COEFFICIENT_2,
+HSH_COEFFICIENT_3, HSH_COEFFICIENT_4, HSH_COEFFICIENT_5, HSH_COEFFICIENT_6, HSH_COEFFICIENT_7, HSH_COEFFICIENT_8
+};
+
+//This function is used to compute Lagendre value
+//Associate Legendre polynominal
+float getLegendrePolynomialsValue(int index,float input)
+{
+    float result = input;
+    //This need to be put into Legendre Polynomials
+  
+    switch (index)
+    {
+        case  0:
+        //(m=0,l=0)
+        //p(0,0)=1
+            result =  1;
+            break;
+        case 1:
+        //(m=-1,l=1)
+            result = -0.5f*sqrt(pow(input, 2) - 1);
+            break;
+        case 2:
+        //(m=0,l=1)
+            result = input;
+            break;
+        case  3:
+        //(m=1,l=1)
+            result = sqrt(pow(input, 2) - 1);
+            break;
+        case  4:
+        //(m=-2,l=2)
+            result = 0.125f * (1 - pow(input, 2));
+            break;
+        case  5:
+         //(m=-1,l=2)
+            result = -0.5f * input * sqrt(pow(input,2)-1);
+            break;
+        case  6:
+        //(m=0,l=2)
+            result = 0.5f * (3 * pow(input, 2) - 1);
+            break;
+        case  7:
+        //(m=1,l=2)
+            result = 3f * input * sqrt(pow(input, 2) - 1);
+            break;
+        case  8:
+         //(m=2,l=2)
+            result = 3f - 3f * pow(input, 2);
+            break;
+    }
+    return result;
+}
+
+//return H(m,l) 
+float getHemisphereHarmonicBasis(int index,float theta,float phi)
+{
+    float result = 0;
+    float factor = 2 * cos(theta) - 1;
+    switch (index)
+    {
+        case  0:
+        //£¨m=0,l=0£©
+            result = HemisphereHarmonicCoefficient[0] * getLegendrePolynomialsValue(index, cos(theta));
+            break;
+        case 1:
+        //(m=-1,l=1)
+            result = sqrt(2) * HemisphereHarmonicCoefficient[index] * sin(phi) * getLegendrePolynomialsValue(index, factor);
+            break;
+        case  2:
+        //(m=0,l=1)
+            result = HemisphereHarmonicCoefficient[index] * getLegendrePolynomialsValue(index, cos(theta));
+            break;
+        case  3:
+        //(m=1,l=1)
+            result = sqrt(2) * HemisphereHarmonicCoefficient[index] * cos(phi) * getLegendrePolynomialsValue(index, factor);
+            break;
+        case  4:
+        //(m=-2,l=2)
+            result = sqrt(2) * HemisphereHarmonicCoefficient[index] * sin(2 * phi) * getLegendrePolynomialsValue(index, factor);
+            break;
+        case  5:
+        //(m=-1,l=2)
+            result = sqrt(2) * HemisphereHarmonicCoefficient[index] * sin(phi) * getLegendrePolynomialsValue(index, factor);
+            break;
+        case 6:
+        //(m=0,l=2)
+            result = HemisphereHarmonicCoefficient[index] * getLegendrePolynomialsValue(index, cos(theta));
+            break;
+        case  7:
+        //(m=1,l=2)
+            result = sqrt(2) * HemisphereHarmonicCoefficient[index] * cos(phi) * getLegendrePolynomialsValue(index, factor);
+            break;
+        case index = 8:
+        //(m=2,l=2)
+            result = sqrt(2) * HemisphereHarmonicCoefficient[index] * cos(2 * phi) * getLegendrePolynomialsValue(index, factor);
+            break;
+    }
+    return result;
+ }
+
+
+
 struct ComputeShaderInput
 {
     uint3 GroupID : SV_GroupID; // 3D index of the thread group in the dispatch.
@@ -61,6 +191,62 @@ void generateRayFromCamera(in float pixelx, in float pixely, out Ray ray)
     ray.dirVS = pPixel;
     ray.ss = true;
 }
+void generateRandomSample()
+{
+    
+}
+//Hanlin
+//Maybe needs kernal
+void ComputeRadianceCache(
+    Ray ray,
+    Intersection intersect,
+    float3 normal)
+{
+    thrust::uniform_real_distribution <float> u01(0, 1);
+    
+    double factor = 2 * PI / SAMPLE_COUNT;
+    // generate n sample light
+    for (int i = 0; i < SAMPLE_COUNT; i++)
+    {
+        //generate random sample ray direction
+        //This is to compute radiance cache
+
+        //Turn it into sphere coordinates
+        //Get sample ray's intersection lighting results
+
+        float up = sqrt(u01(rng)); // cos(theta)
+        float over = sqrt(1 - up * up); // sin(theta)
+        float around = u01(rng) * 2*PI;
+
+        glm::vec3 directionNotNormal;
+        if (abs(normal.x) < SQRT_OF_ONE_THIRD)
+        {
+            directionNotNormal = float3(1, 0, 0);
+        }
+        else if (abs(normal.y) < SQRT_OF_ONE_THIRD)
+        {
+            directionNotNormal = float3(0, 1, 0);
+        }
+        else
+        {
+            directionNotNormal = float3(0, 0, 1);
+        }
+
+        // Use not-normal direction to generate two perpendicular directions
+        float3 perpendicularDirection1 =
+            glm::normalize(glm::cross(normal, directionNotNormal));
+        float3 perpendicularDirection2 =
+            glm::normalize(glm::cross(normal, perpendicularDirection1));
+
+        float3 rayDir = up * normal
+            + cos(around) * over * perpendicularDirection1
+            + sin(around) * over * perpendicularDirection2;
+
+        //Get the generated rayDir's intersection BSDF cache
+
+
+
+    }
 
 void firstIntersect(in Ray ray, out Intersection isect){
     
