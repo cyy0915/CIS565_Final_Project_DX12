@@ -113,7 +113,7 @@ namespace dx12lib
         float emittance;
     };
 
-    struct Camera {
+    /*struct Camera {
         glm::ivec2 resolution;
         glm::vec3 position;
         glm::vec3 lookAt;
@@ -130,7 +130,7 @@ namespace dx12lib
         int traceDepth;
         std::vector<glm::vec3> image;
         std::string imageName;
-    };
+    };*/
 
     struct PathSegment {
         Ray ray;
