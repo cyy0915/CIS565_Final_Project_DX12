@@ -232,6 +232,29 @@ ComPtr<ID3D12Resource> CommandList::CopyBuffer( size_t bufferSize, const void* b
     return d3d12Resource;
 }
 
+ComPtr<ID3D12Resource> CommandList::CreateReadBackBuffer(size_t bufferSize, std::shared_ptr<Buffer> buffer) {
+    ComPtr<ID3D12Resource> readbackResource;
+
+    if (bufferSize == 0) {
+        return readbackResource;
+    }
+
+    auto d3d12Device = m_Device.GetD3D12Device();
+
+    ThrowIfFailed(d3d12Device->CreateCommittedResource(
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK), D3D12_HEAP_FLAG_NONE,
+        &CD3DX12_RESOURCE_DESC::Buffer(bufferSize), D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+        IID_PPV_ARGS(&readbackResource)));
+
+    auto srcRes = buffer->GetD3D12Resource();
+    TransitionBarrier(srcRes, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    FlushResourceBarriers();
+    m_d3d12CommandList->CopyResource(readbackResource.Get(), srcRes.Get());
+    TrackResource(srcRes);
+
+    return readbackResource;
+}
+
 std::shared_ptr<VertexBuffer> CommandList::CopyVertexBuffer( size_t numVertices, size_t vertexStride,
                                                              const void* vertexBufferData )
 {
@@ -1281,6 +1304,19 @@ void CommandList::SetGraphicsDynamicStructuredBuffer( uint32_t slot, size_t numE
 
     m_d3d12CommandList->SetGraphicsRootShaderResourceView( slot, heapAllocation.GPU );
 }
+
+void CommandList::SetComputeDynamicStructuredBuffer(uint32_t slot, size_t numElements, size_t elementSize,
+    const void* bufferData)
+{
+    size_t bufferSize = numElements * elementSize;
+
+    auto heapAllocation = m_UploadBuffer->Allocate(bufferSize, elementSize);
+
+    memcpy(heapAllocation.CPU, bufferData, bufferSize);
+
+    m_d3d12CommandList->SetComputeRootShaderResourceView(slot, heapAllocation.GPU);
+}
+
 void CommandList::SetViewport( const D3D12_VIEWPORT& viewport )
 {
     SetViewports( { viewport } );

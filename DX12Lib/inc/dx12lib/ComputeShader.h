@@ -9,6 +9,9 @@
 #include <wrl.h>
 #include "CommandList.h"
 #include "Texture.h"
+#include "bvhTree.h"
+#include "glm/glm.hpp"
+#include "StructuredBuffer.h"
 
 namespace dx12lib
 {
@@ -18,9 +21,10 @@ namespace dx12lib
     class RootSignature;
 
     //编写为hlsl与cpp共有的结构，通过这个结构向hlsl传少量常量，注意在c++中需要alignas(16)，即16B对齐，不然会导致两边内存结构不一样
-    struct alignas(16) ConstantBuffer
+    struct ConstantBuffer
     {
-        DirectX::XMFLOAT4 color;
+        XMFLOAT3 color;
+        XMFLOAT3 color2;
     };
 
     namespace ComputeShaderParm
@@ -28,8 +32,10 @@ namespace dx12lib
         //传入hlsl的每一项参数的命名, 通过这种方式确定参数的索引
         enum
         {
-            Parm1,
-            Result,
+            sdf,
+            SDFGrids,
+            bvhNodes,
+            geoms,
             NumRootParameters
         };
     }
@@ -37,7 +43,7 @@ namespace dx12lib
     class ComputeShader
     {
     public:
-        ComputeShader(std::shared_ptr<Device> device, int w, int h);
+        ComputeShader(std::shared_ptr<Device> device, glm::ivec3 resolution);
 
         void resize(int w, int h);
 
@@ -52,16 +58,17 @@ namespace dx12lib
         }
 
         //进行一次compute shader的计算
-        void dispatch(std::shared_ptr<CommandList> commandList, DirectX::XMFLOAT4 color);
+        void dispatch(std::shared_ptr<CommandList> commandList, SDF sdf, BVHTree& bvhTree, std::vector<Geom> geoms);
 
-        std::shared_ptr<Texture> GetResultTexture() const {
-            return m_ResultTexture;
+        std::shared_ptr<StructuredBuffer> GetResult() const {
+            return m_Result;
         }
 
     private:
         std::shared_ptr<RootSignature>       m_RootSignature;
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
-        int m_Width, m_Height;
+        std::shared_ptr<StructuredBuffer> m_Result;
+        glm::ivec3 m_Resolution;
     };
 }  // namespace dx12lib

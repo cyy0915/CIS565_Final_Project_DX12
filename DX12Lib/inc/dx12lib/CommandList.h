@@ -328,6 +328,12 @@ public:
                                  uint32_t numSubresources, D3D12_SUBRESOURCE_DATA* subresourceData );
 
     /**
+     * read back data in gpu to cpu
+     */
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateReadBackBuffer(size_t bufferSize, std::shared_ptr<Buffer> buffer);
+
+
+    /**
      * Set a dynamic constant buffer data to an inline descriptor in the root
      * signature.
      */
@@ -419,6 +425,17 @@ public:
     void SetGraphicsDynamicStructuredBuffer( uint32_t slot, const std::vector<T>& bufferData )
     {
         SetGraphicsDynamicStructuredBuffer( slot, bufferData.size(), sizeof( T ), bufferData.data() );
+    }
+
+    /**
+     * Set dynamic structured buffer contents.
+     */
+    void SetComputeDynamicStructuredBuffer(uint32_t slot, size_t numElements, size_t elementSize,
+        const void* bufferData);
+    template<typename T>
+    void SetComputeDynamicStructuredBuffer(uint32_t slot, const std::vector<T>& bufferData)
+    {
+        SetComputeDynamicStructuredBuffer(slot, bufferData.size(), sizeof(T), bufferData.data());
     }
 
     /**
