@@ -58,6 +58,9 @@ ComputeShader::ComputeShader(std::shared_ptr<Device> device, glm::ivec3 resoluti
 //}
 
 void ComputeShader::dispatch(std::shared_ptr<CommandList> commandList, SDF sdf, BVHTree& bvhTree, std::vector<Geom> geoms) {
+    m_sdf = sdf;
+    m_geoms = geoms;
+    
     commandList->SetPipelineState(m_PipelineState);
     commandList->SetComputeRootSignature(m_RootSignature);
 
