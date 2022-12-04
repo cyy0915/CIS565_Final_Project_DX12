@@ -60,8 +60,8 @@ namespace dx12lib
         //进行一次compute shader的计算
         void dispatch(std::shared_ptr<CommandList> commandList, SDF sdf, BVHTree& bvhTree, std::vector<Geom> geoms);
 
-        std::shared_ptr<Texture> GetResultTexture() const {
-            return m_ResultTexture;
+        std::shared_ptr<StructuredBuffer> GetResult() const {
+            return m_Result;
         }
 
     private:

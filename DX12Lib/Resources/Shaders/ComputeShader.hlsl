@@ -37,7 +37,7 @@ struct Geom {
     float4x4 transform;
     float4x4 inverseTransform;
     float4x4 invTranspose;
-    int type;
+    int4 type;
 };
 
 struct BVHNode {

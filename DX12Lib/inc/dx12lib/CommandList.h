@@ -328,6 +328,12 @@ public:
                                  uint32_t numSubresources, D3D12_SUBRESOURCE_DATA* subresourceData );
 
     /**
+     * read back data in gpu to cpu
+     */
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateReadBackBuffer(size_t bufferSize, std::shared_ptr<Buffer> buffer);
+
+
+    /**
      * Set a dynamic constant buffer data to an inline descriptor in the root
      * signature.
      */
