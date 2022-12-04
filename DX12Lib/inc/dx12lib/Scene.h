@@ -37,6 +37,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
+#include "sceneStructs.h"
 
 class aiMaterial;
 class aiMesh;
@@ -80,6 +82,9 @@ public:
      */
     virtual void Accept( Visitor& visitor );
 
+
+    std::vector<Triangle> getTriangles() const;
+
 protected:
     friend class CommandList;
 
@@ -117,5 +122,10 @@ private:
     std::shared_ptr<SceneNode> m_RootNode;
 
     std::wstring m_SceneFile;
+
+    std::vector<Triangle> mp_faces;
+    std::vector<Material1> mp_materials;
+    std::vector<Geom> mp_geoms;
+
 };
 }  // namespace dx12lib

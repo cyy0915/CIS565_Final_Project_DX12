@@ -297,6 +297,15 @@ void Scene::ImportMaterial( CommandList& commandList, const aiMaterial& material
 
     // m_MaterialMap.insert( MaterialMap::value_type( materialName.C_Str(), pMaterial ) );
     m_Materials.push_back( pMaterial );
+
+
+    // Import data to our own material type
+    Material1 newMaterial;
+    newMaterial.color = glm::vec3( pMaterial->GetDiffuseColor().x, pMaterial->GetDiffuseColor().y, pMaterial->GetDiffuseColor().z );
+    //newMaterial.emittance;
+    
+    mp_materials.push_back( newMaterial );
+
 }
 
 void Scene::ImportMesh( CommandList& commandList, const aiMesh& aiMesh )
@@ -354,12 +363,30 @@ void Scene::ImportMesh( CommandList& commandList, const aiMesh& aiMesh )
         {
             const aiFace& face = aiMesh.mFaces[i];
 
+            Triangle newFace;
             // Only extract triangular faces
             if ( face.mNumIndices == 3 )
             {
                 indices.push_back( face.mIndices[0] );
                 indices.push_back( face.mIndices[1] );
                 indices.push_back( face.mIndices[2] );
+
+                // import data to our own triangle type
+                const auto& vertex1Data = vertexData[face.mIndices[0]];
+                const auto& vertex2Data = vertexData[face.mIndices[1]];
+                const auto& vertex3Data = vertexData[face.mIndices[2]];
+
+                newFace.point1 = glm::vec3( vertex1Data.Position.x, vertex1Data.Position.y, vertex1Data.Position.z );
+                newFace.point2 = glm::vec3( vertex2Data.Position.x, vertex2Data.Position.y, vertex2Data.Position.z );
+                newFace.point3 = glm::vec3( vertex3Data.Position.x, vertex3Data.Position.y, vertex3Data.Position.z );
+                
+                newFace.normal1 = glm::vec3( vertex1Data.Normal.x, vertex1Data.Normal.y, vertex1Data.Normal.z );
+                newFace.normal2 = glm::vec3( vertex2Data.Normal.x, vertex2Data.Normal.y, vertex2Data.Normal.z );
+                newFace.normal3 = glm::vec3( vertex3Data.Normal.x, vertex3Data.Normal.y, vertex3Data.Normal.z );
+
+                newFace.geomId = mp_geoms.size();
+
+                mp_faces.push_back( newFace );
             }
         }
 
@@ -374,6 +401,15 @@ void Scene::ImportMesh( CommandList& commandList, const aiMesh& aiMesh )
     mesh->SetAABB( CreateBoundingBox( aiMesh.mAABB ) );
 
     m_Meshes.push_back( mesh );
+
+    // import data to our own mesh type
+    Geom newGeom;
+    newGeom.faceNum = aiMesh.mNumFaces;
+    newGeom.faceStartIdx = mp_faces.size() - newGeom.faceNum;
+    newGeom.materialid = aiMesh.mMaterialIndex;
+    //newGeom.transform;
+
+    mp_geoms.push_back( newGeom );
 }
 
 std::shared_ptr<SceneNode> Scene::ImportSceneNode( CommandList& commandList, std::shared_ptr<SceneNode> parent,
@@ -398,6 +434,17 @@ std::shared_ptr<SceneNode> Scene::ImportSceneNode( CommandList& commandList, std
 
         std::shared_ptr<Mesh> pMesh = m_Meshes[aiNode->mMeshes[i]];
         node->AddMesh( pMesh );
+
+        // import data to our own mesh type
+        XMFLOAT4X4 meshTransform;
+        XMStoreFloat4x4( &meshTransform, node->GetWorldTransform() ); 
+        
+        // row major to column major matrix
+        mp_geoms[aiNode->mMeshes[i]].transform =
+            glm::mat4( meshTransform._11, meshTransform._21, meshTransform._31, meshTransform._41, 
+                       meshTransform._12, meshTransform._22, meshTransform._32, meshTransform._42, 
+                       meshTransform._13, meshTransform._23, meshTransform._33, meshTransform._43, 
+                       meshTransform._14, meshTransform._24, meshTransform._34, meshTransform._44);
     }
 
     // Recursively Import children
@@ -417,6 +464,11 @@ void Scene::Accept( Visitor& visitor )
     {
         m_RootNode->Accept( visitor );
     }
+}
+
+std::vector<Triangle> dx12lib::Scene::getTriangles() const
+{
+    return mp_faces;
 }
 
 DirectX::BoundingBox Scene::GetAABB() const

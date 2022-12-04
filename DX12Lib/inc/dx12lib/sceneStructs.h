@@ -7,6 +7,8 @@
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
 #define USE_BVH_FOR_INTERSECTION 1
 
+using namespace DirectX;
+
 namespace dx12lib
 {
 
@@ -113,7 +115,7 @@ namespace dx12lib
         float emittance;
     };
 
-    struct Camera {
+    struct Camera1 {
         glm::ivec2 resolution;
         glm::vec3 position;
         glm::vec3 lookAt;
@@ -125,7 +127,7 @@ namespace dx12lib
     };
 
     struct RenderState {
-        Camera camera;
+        Camera1 camera;
         unsigned int iterations;
         int traceDepth;
         std::vector<glm::vec3> image;
