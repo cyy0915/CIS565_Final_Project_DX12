@@ -309,7 +309,7 @@ void ComputeRadianceCache(
     
     for (int i = 0; i < 9;i++)
     {
-        ray.radianceCache += lamda[i] * getHemisphereHarmonicBasis(i, ray_theta, phi);
+        ray.radianceCache += lamda[i] * getHemisphereHarmonicBasis(i, ray_theta,ray_phi);
     }
 
 }
