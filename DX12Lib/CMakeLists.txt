@@ -42,6 +42,7 @@ set( HEADER_FILES
     inc/dx12lib/ComputeShader.h
     inc/dx12lib/bvhTree.h
     inc/dx12lib/sceneStructs.h
+    inc/dx12lib/RayTrace.h
 
 )
 
@@ -83,6 +84,7 @@ set( SOURCE_FILES
     src/VertexTypes.cpp
     src/ComputeShader.cpp
     src/bvhTree.cpp
+    src/RayTrace.cpp
    
 )
 
@@ -114,6 +116,7 @@ set( SHADER_FILES
     Resources/Shaders/ImGUI_VS.hlsl
     Resources/Shaders/ImGUI_PS.hlsl
     Resources/Shaders/ComputeShader.hlsl
+    Resources/Shaders/RayTrace.hlsl
 )
 
 set( RESOURCE_FILES 
@@ -205,4 +208,10 @@ set_source_files_properties( Resources/Shaders/ComputeShader.hlsl
     PROPERTIES
         VS_SHADER_TYPE Compute
         VS_SHADER_VARIABLE_NAME g_ComputeShader
+)
+
+set_source_files_properties( Resources/Shaders/RayTrace.hlsl
+    PROPERTIES
+        VS_SHADER_TYPE Compute
+        VS_SHADER_VARIABLE_NAME g_RayTrace
 )

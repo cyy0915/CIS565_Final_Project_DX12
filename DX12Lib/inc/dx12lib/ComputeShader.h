@@ -23,8 +23,8 @@ namespace dx12lib
     //编写为hlsl与cpp共有的结构，通过这个结构向hlsl传少量常量，注意在c++中需要alignas(16)，即16B对齐，不然会导致两边内存结构不一样
     struct ConstantBuffer
     {
-        XMFLOAT3 color;
-        XMFLOAT3 color2;
+        DirectX::XMFLOAT3 color;
+        DirectX::XMFLOAT3 color2;
     };
 
     namespace ComputeShaderParm
@@ -64,11 +64,14 @@ namespace dx12lib
             return m_Result;
         }
 
+        glm::ivec3 m_Resolution;
+        SDF m_sdf;
+        std::vector<Geom> m_geoms;
+
     private:
         std::shared_ptr<RootSignature>       m_RootSignature;
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
         std::shared_ptr<StructuredBuffer> m_Result;
-        glm::ivec3 m_Resolution;
     };
 }  // namespace dx12lib

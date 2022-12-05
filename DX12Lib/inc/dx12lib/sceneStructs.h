@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "glm/glm.hpp"
+#include <DirectXMath.h>
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
 #define USE_BVH_FOR_INTERSECTION 1
@@ -34,9 +35,9 @@ namespace dx12lib
         glm::vec3 scale;
         int faceNum;
         //
-        XMFLOAT4X4 transform;
-        XMFLOAT4X4 inverseTransform;
-        XMFLOAT4X4 invTranspose;
+        DirectX::XMFLOAT4X4 transform;
+        DirectX::XMFLOAT4X4 inverseTransform;
+        DirectX::XMFLOAT4X4 invTranspose;
         enum GeomType type;
     };
 
@@ -58,7 +59,7 @@ namespace dx12lib
             glm::mat4 invTransposeT = glm::transpose(invTranspose);
 
             return GeomGPU({ materialid, translation, rotation, faceStartIdx, scale, faceNum,
-                XMFLOAT4X4(&transformT[0][0]), XMFLOAT4X4(&inverseTransformT[0][0]), XMFLOAT4X4(&invTransposeT[0][0]),
+                DirectX::XMFLOAT4X4(&transformT[0][0]), DirectX::XMFLOAT4X4(&inverseTransformT[0][0]), DirectX::XMFLOAT4X4(&invTransposeT[0][0]),
                 type });
         }
     };
@@ -103,6 +104,18 @@ namespace dx12lib
 #endif
     };
 
+    struct alignas(16) MaterialGPU {
+        glm::vec3 color;
+        float exponent;
+        //
+        glm::vec3 specularColor;
+        float hasReflective;
+        //
+        float hasRefractive;
+        float indexOfRefraction;
+        float emittance;
+    };
+
     struct Material1 {
         glm::vec3 color;
         struct {
@@ -113,6 +126,10 @@ namespace dx12lib
         float hasRefractive;
         float indexOfRefraction;
         float emittance;
+
+        MaterialGPU getGPUData() {
+            return MaterialGPU({ color, specular.exponent, specular.color, hasReflective, hasRefractive, indexOfRefraction, emittance });
+        }
     };
 
     struct Camera1 {
@@ -175,7 +192,7 @@ namespace dx12lib
         }
     };
 
-    struct alignas(16) SDFGrid {
+    struct SDFGrid {
         float dist;
         int geomId;
     };
