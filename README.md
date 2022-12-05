@@ -1,10 +1,18 @@
 # Overview
 This is a GPU based path tracer. The project focus on improving performance of the path tracer using screen space tracing, ray marching with SDF, and radiance cache.
 
+# Pipeline
+![](img/pipeline.png)
+
 # Features
 ### `Screen Space Tracing`
 
-placeholder
+Because ray marching with SDF is not very accurate, we add screen tracing to deal with direct lighting and first few bounces. And to get Gbuffers used in screen tracing, we also add a simple rasterizing pipeline
+
+Direct light  |  Direct light + 3 bounces with screen tracing
+:-------------------------:|:-------------------------:
+![](img/direct.png)        |  ![](img/direct%2Bscreen.png)
+
 
 ### `Ray Marching with SDF`
 The rendering below is run on our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer).
