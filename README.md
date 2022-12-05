@@ -17,7 +17,19 @@ However, ray marching with SDF can cause rendering in some parts of the scene in
 
 ### `Radiance Cache`
 
-placeholder
+The current image below is buggy....
+
+![](img/sdf/Buggy_cache.png)
+
+The basic idea of radiance cache is to precompute part of point's incoming radiance, and use Hemisphere Harmonic to represent them.
+
+After precompute radiance cache, when doing path tracing and get intersection, first find the nearest radiance cache point, then use interpolation to calculate this point's diffuse radiance.
+
+But to successfully interpolate, need to compute the HSH coefficient's partial derivatives.
+
+HSH Coefficient compute    |  Ray Tracing  (4 FPS)
+:-------------------------:|:-------------------------:
+![](img/sdf/HSH_1.png)        |  ![](img/sdf/HSH_2.png)
 
 
 # Readme from Our Base Code
