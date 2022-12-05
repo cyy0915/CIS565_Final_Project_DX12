@@ -7,13 +7,16 @@ This is a GPU based path tracer. The project focus on improving performance of t
 placeholder
 
 ### `Ray Marching with SDF`
-The image below is run on our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer).
+The rendering below is run on our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer).
 Ray Marching with SDF (17.6 FPS)  |  Ray Tracing  (4 FPS)
 :-------------------------:|:-------------------------:
 ![](img/sdf/sdf1.PNG)        |  ![](img/sdf/rayTracing1.PNG)
 
-As we can see from the image, the performance improvement is huge. Ray marching with SDF is roughly 4 times faster than ray tracing method.
+As we can see from the image, the performance improvement is huge. Ray marching with SDF is roughly 4 times faster than ray tracing method. Even if there are more geometries in the scene, ray marching with SDF still maintains stable FPS, while FPS would drop with ray tracing.
 However, ray marching with SDF can cause rendering in some parts of the scene inaccurate.
+
+Ray marching with low resolution SDF voxels
+![](img/sdf/sdf2.PNG)
 
 ### `Radiance Cache`
 
