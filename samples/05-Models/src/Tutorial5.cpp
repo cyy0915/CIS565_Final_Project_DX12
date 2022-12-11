@@ -495,7 +495,7 @@ void Tutorial5::OnRender()
 
         m_RayTraceComputeShader->dispatch(commandList, std::vector<Material1>(), m_Camera.getGPUData(m_Width, m_Height),
             m_SDFComputeShader->m_sdfParm, std::vector<Geom>(), m_SDFComputeShader->GetResult(),
-            m_RenderTarget.GetTexture(AttachmentPoint::Color0), m_RenderTarget.GetTexture(AttachmentPoint::Color1), m_RenderTarget.GetTexture(AttachmentPoint::Color2));
+            m_RenderTarget.GetTexture(AttachmentPoint::Color0), m_RenderTarget.GetTexture(AttachmentPoint::Color1), m_RenderTarget.GetTexture(AttachmentPoint::Color2),m_RayTraceComputeShader->GetRadianceCacheBuffer());
 
         auto swapChainBackBuffer = m_SwapChain->GetRenderTarget().GetTexture( AttachmentPoint::Color0 );
         //commandList->ResolveSubresource( swapChainBackBuffer, msaaRenderTarget );

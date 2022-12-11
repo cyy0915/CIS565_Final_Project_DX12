@@ -26,12 +26,15 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
 
     rootParameters[RayTraceParm::geoms].InitAsShaderResourceView(RayTraceRegisterT::geoms);
     rootParameters[RayTraceParm::SDFGrids].InitAsShaderResourceView(RayTraceRegisterT::sdf);
+    //Radiance Cache
+    rootParameters[RayTraceParm::RadianceCacheParam].InitAsShaderResourceView( RayTraceRegisterT::radianceCache );
+
     rootParameters[RayTraceParm::materials].InitAsShaderResourceView(RayTraceRegisterT::materials);
     rootParameters[RayTraceParm::gbuffers].InitAsDescriptorTable(1, &texturesSRV);
     rootParameters[RayTraceParm::result].InitAsDescriptorTable(1, &resultUAV);
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(RayTraceParm::NumRootParameters, rootParameters);
     m_RootSignature = device->CreateRootSignature(rootSignatureDesc.Desc_1_1);
-
+   //
     // Create the PSO
     struct PipelineStateStream
     {
@@ -44,7 +47,7 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
 
     //Create result texture 
     auto colorDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R16G16B16A16_FLOAT, m_Width, m_Height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-    
+    m_radianceCacheBuffer = device->CreateStructuredBuffer(m_Width*m_Height,sizeof(radianceCache));
     m_ResultTexture = device->CreateTexture(colorDesc);
 }
 
@@ -57,11 +60,10 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
 
 void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, std::vector<Material1> mats, CameraDataGPU camera, 
     SDF sdfParm, std::vector<Geom> geoms, std::shared_ptr<StructuredBuffer> sdfGrids,
-    std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color) {
+    std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color,std::shared_ptr<StructuredBuffer> radianceCache) {
     m_iter++;
     commandList->SetPipelineState(m_PipelineState);
     commandList->SetComputeRootSignature(m_RootSignature);
-
     commandList->SetComputeDynamicConstantBuffer(RayTraceParm::camera, camera);
     commandList->SetCompute32BitConstants(RayTraceParm::SDFParm, sdfParm.getGPUData());
     int geomNum = geoms.size();
@@ -69,13 +71,15 @@ void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, std::vector<Ma
     float randomNum = rand() / (float)RAND_MAX;
     commandList->SetCompute32BitConstants(RayTraceParm::randNum, randomNum);
     commandList->SetCompute32BitConstants(RayTraceParm::iterNum, m_iter);
-
     std::vector<GeomGPU> geomsGPU;
     for (auto g : geoms) {
         geomsGPU.push_back(g.getGPUData());
     }
     commandList->SetComputeDynamicStructuredBuffer(RayTraceParm::geoms, geomsGPU);
     commandList->SetShaderResourceView(RayTraceParm::SDFGrids, sdfGrids);
+    //Radiance Cache
+    commandList->SetShaderResourceView( RayTraceParm::RadianceCacheParam, radianceCache );
+
     std::vector<MaterialGPU> matsData;
     for (auto m : mats) {
         matsData.push_back(m.getGPUData());

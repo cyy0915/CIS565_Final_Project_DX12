@@ -39,6 +39,8 @@ namespace dx12lib
             materials,
             gbuffers,
             result,
+            //RadianceCache param
+            RadianceCacheParam,
             NumRootParameters
         };
     }
@@ -51,6 +53,7 @@ namespace dx12lib
             materials,
             geoms,
             gbuffers,
+            radianceCache =6
         };
     }
     class RayTrace
@@ -68,9 +71,15 @@ namespace dx12lib
             return m_PipelineState;
         }
 
+        std::shared_ptr<StructuredBuffer> GetRadianceCacheBuffer() const
+        {
+            return m_radianceCacheBuffer;
+        }
+
+
         void dispatch(std::shared_ptr<CommandList> commandList, std::vector<Material1> mats, CameraDataGPU camera, 
             SDF sdfParm, std::vector<Geom> geoms, std::shared_ptr<StructuredBuffer> SDFGrids,
-            std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color);
+            std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color,std::shared_ptr<StructuredBuffer> radianceCacheBuffer);
 
         std::shared_ptr<Texture> GetResult() const {
             return m_ResultTexture;
@@ -80,6 +89,9 @@ namespace dx12lib
         std::shared_ptr<RootSignature>       m_RootSignature;
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
+        // structureBuffer
+        std::shared_ptr<StructuredBuffer> m_radianceCacheBuffer;
+
         int m_Width, m_Height;
         int m_iter = 0;
     };
