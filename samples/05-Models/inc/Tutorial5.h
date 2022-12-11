@@ -185,7 +185,6 @@ private:
     std::vector<DirectionalLight> m_DirectionalLights;
 
     // Rotate the lights in a circle.
-    bool m_AnimateLights;
 
     bool              m_Fullscreen;
     bool              m_AllowFullscreenToggle;
@@ -201,4 +200,10 @@ private:
 
     std::shared_ptr<dx12lib::ComputeShader> m_SDFComputeShader;
     std::shared_ptr<dx12lib::RayTrace> m_RayTraceComputeShader;
+
+    bool m_ScreenTracing = true;
+    int m_UseSDF = 1;
+    int m_Depth = 5;
+    glm::vec3 m_LightDir = glm::vec3(0, -3, 1);
+    bool m_HasChange = true;
 };

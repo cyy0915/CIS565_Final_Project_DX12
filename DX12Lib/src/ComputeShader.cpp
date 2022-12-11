@@ -75,9 +75,11 @@ void ComputeShader::dispatch(CommandQueue& commandQueue, BVHTree& bvhTree, std::
                 //´«²Î
                 commandList->SetCompute32BitConstants(ComputeShaderParm::sdf, m_sdfParm.getGPUData());
 
-                std::vector<BVHNodeGPU> bvhDatas;
-                bvhTree.getGPUData(bvhDatas);
-                m_bvhResource = commandList->CopyStructuredBuffer(bvhDatas);
+                if (i == 0 && j == 0 && k == 0) {
+                    std::vector<BVHNodeGPU> bvhDatas;
+                    bvhTree.getGPUData(bvhDatas);
+                    m_bvhResource = commandList->CopyStructuredBuffer(bvhDatas);
+                }
                 commandList->SetShaderResourceView(ComputeShaderParm::bvhNodes, m_bvhResource);
                 
                 std::vector<MaterialSDF> matsDatas;

@@ -113,6 +113,8 @@ public:
         return r;
     }
 
+    bool m_hasChange = true;
+
 protected:
     virtual void UpdateViewMatrix() const;
     virtual void UpdateInverseViewMatrix() const;

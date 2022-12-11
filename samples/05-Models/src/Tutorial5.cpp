@@ -91,7 +91,6 @@ Tutorial5::Tutorial5( const std::wstring& name, int width, int height, bool vSyn
 : m_ScissorRect { 0, 0, LONG_MAX, LONG_MAX }
 , m_Viewport( CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( width ), static_cast<float>( height ) ) )
 , m_CameraController( m_Camera )
-, m_AnimateLights( false )
 , m_Fullscreen( false )
 , m_AllowFullscreenToggle( true )
 , m_ShowFileOpenDialog( false )
@@ -213,10 +212,14 @@ bool Tutorial5::LoadScene( const std::wstring& sceneFile )
 
     //generate bvh and sdf
     if (m_Scene) {
-        DirectX::BoundingSphere s;
-        BoundingSphere::CreateFromBoundingBox(s, m_Scene->GetAABB());
-        auto scale = 50.0f / (s.Radius * 2.0f);
-        s.Radius *= 1.1;
+        auto aabb = m_Scene->GetAABB();
+        float longAxis = std::max(std::max(aabb.Extents.x, aabb.Extents.y), aabb.Extents.z);
+        auto scale = 50.0f / (longAxis * 2.0f);
+        glm::vec3 center(aabb.Center.x, aabb.Center.y, aabb.Center.z);
+        glm::vec3 extents(aabb.Extents.x, aabb.Extents.y, aabb.Extents.z);
+        extents *= 1.2f * scale;
+        center *= scale;
+
         std::vector<Triangle> triangles = m_Scene->getTriangles();
         for (auto& t : triangles) {
             t.point1 *= scale;
@@ -228,11 +231,11 @@ bool Tutorial5::LoadScene( const std::wstring& sceneFile )
         BVHTree bvh;
         bvh.build(triangles);
         SDF sdfParm;
-        sdfParm.resolution = glm::ivec3(100, 100, 100);
-        glm::vec3 center(s.Center.x, s.Center.y, s.Center.z);
-        sdfParm.minCorner = (center - s.Radius) * scale;
-        sdfParm.maxCorner = (center + s.Radius) * scale;
-        sdfParm.gridExtent = glm::vec3(s.Radius * 2 * scale /100.f);
+        int resolution = 300;
+        sdfParm.gridExtent = glm::vec3(longAxis * 2 * scale / (float)resolution);
+        sdfParm.resolution = glm::ivec3(extents * 2.f / sdfParm.gridExtent);
+        sdfParm.minCorner = center - extents;
+        sdfParm.maxCorner = center + extents;
         m_SDFComputeShader = std::make_shared<ComputeShader>(m_Device, sdfParm, m_Scene->getMaterials().size());
         auto& sdfcommandQueue = m_Device->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
         m_SDFComputeShader->dispatch(sdfcommandQueue, bvh, m_Scene->getMaterials());
@@ -369,10 +372,10 @@ void Tutorial5::OnUpdate( UpdateEventArgs& e )
     static const XMVECTORF32 LightColors[] = { Colors::White, Colors::OrangeRed, Colors::Blue };
 
     static float lightAnimTime = 0.0f;
-    if ( m_AnimateLights )
+    /*if ( m_AnimateLights )
     {
         lightAnimTime += static_cast<float>( e.DeltaTime ) * 0.5f * XM_PI;
-    }
+    }*/
 
     const float radius                 = 1.0f;
     float       directionalLightOffset = numDirectionalLights > 0 ? 2.0f * XM_PI / numDirectionalLights : 0;
@@ -415,6 +418,7 @@ void Tutorial5::OnResize( ResizeEventArgs& e )
     m_RenderTarget.Resize( m_Width, m_Height );
 
     m_SwapChain->Resize( m_Width, m_Height );
+    m_RayTraceComputeShader->resize(m_Width, m_Height);
 }
 
 void Tutorial5::OnRender()
@@ -493,8 +497,9 @@ void Tutorial5::OnRender()
             m_Cone->Accept( unlitPass );
         }
 
-        m_RayTraceComputeShader->dispatch(commandList, std::vector<Material1>(), m_Camera.getGPUData(m_Width, m_Height),
-            m_SDFComputeShader->m_sdfParm, std::vector<Geom>(), m_SDFComputeShader->GetResult(),
+        m_RayTraceComputeShader->dispatch(commandList, m_Camera.getGPUData(m_Width, m_Height), m_Camera.m_hasChange || m_HasChange, 
+            m_Depth, m_UseSDF, m_LightDir, m_ScreenTracing,
+            m_SDFComputeShader->m_sdfParm, m_SDFComputeShader->GetResult(),
             m_RenderTarget.GetTexture(AttachmentPoint::Color0), m_RenderTarget.GetTexture(AttachmentPoint::Color1), m_RenderTarget.GetTexture(AttachmentPoint::Color2));
 
         auto swapChainBackBuffer = m_SwapChain->GetRenderTarget().GetTexture( AttachmentPoint::Color0 );
@@ -518,28 +523,28 @@ void Tutorial5::OnKeyPressed( KeyEventArgs& e )
         case KeyCode::Escape:
             GameFramework::Get().Stop();
             break;
-        case KeyCode::Space:
+        /*case KeyCode::Space:
             m_AnimateLights = !m_AnimateLights;
-            break;
-        case KeyCode::Enter:
-            if ( e.Alt )
-            {
-            case KeyCode::F11:
-                if ( m_AllowFullscreenToggle )
-                {
-                    m_Fullscreen = !m_Fullscreen;  // Defer window resizing until OnUpdate();
-                    // Prevent the key repeat to cause multiple resizes.
-                    m_AllowFullscreenToggle = false;
-                }
-                break;
-            }
+            break;*/
+        //case KeyCode::Enter:
+        //    if ( e.Alt )
+        //    {
+        //    case KeyCode::F11:
+        //        if ( m_AllowFullscreenToggle )
+        //        {
+        //            m_Fullscreen = !m_Fullscreen;  // Defer window resizing until OnUpdate();
+        //            // Prevent the key repeat to cause multiple resizes.
+        //            m_AllowFullscreenToggle = false;
+        //        }
+        //        break;
+        //    }
         case KeyCode::V:
             m_SwapChain->ToggleVSync();
             break;
-        case KeyCode::R:
-            // Reset camera transform
-            m_CameraController.ResetView();
-            break;
+        //case KeyCode::R:
+        //    // Reset camera transform
+        //    m_CameraController.ResetView();
+        //    break;
         case KeyCode::O:
             if ( e.Control )
             {
@@ -556,13 +561,13 @@ void Tutorial5::OnKeyReleased( KeyEventArgs& e )
     {
         switch ( e.Key )
         {
-        case KeyCode::Enter:
+        /*case KeyCode::Enter:
             if ( e.Alt )
             {
             case KeyCode::F11:
                 m_AllowFullscreenToggle = true;
             }
-            break;
+            break;*/
         }
     }
 }
@@ -652,25 +657,25 @@ void Tutorial5::OnGUI( const std::shared_ptr<CommandList>& commandList, const Re
                 m_SwapChain->SetVSync( vSync );
             }
 
-            bool fullscreen = m_Window->IsFullscreen();
-            if ( ImGui::MenuItem( "Full screen", "Alt+Enter", &fullscreen ) )
-            {
-                // m_Window->SetFullscreen( fullscreen );
-                // Defer the window resizing until the reference to the render target is released.
-                m_Fullscreen = fullscreen;
-            }
+            //bool fullscreen = m_Window->IsFullscreen();
+            //if ( ImGui::MenuItem( "Full screen", "Alt+Enter", &fullscreen ) )
+            //{
+            //    // m_Window->SetFullscreen( fullscreen );
+            //    // Defer the window resizing until the reference to the render target is released.
+            //    m_Fullscreen = fullscreen;
+            //}
 
-            ImGui::MenuItem( "Animate Lights", "Space", &m_AnimateLights );
+            //ImGui::MenuItem( "Animate Lights", "Space", &m_AnimateLights );
 
             bool invertY = m_CameraController.IsInverseY();
             if ( ImGui::MenuItem( "Inverse Y", nullptr, &invertY ) )
             {
                 m_CameraController.SetInverseY( invertY );
             }
-            if ( ImGui::MenuItem( "Reset view", "R" ) )
+            /*if ( ImGui::MenuItem( "Reset view", "R" ) )
             {
                 m_CameraController.ResetView();
-            }
+            }*/
 
             ImGui::EndMenu();
         }
@@ -690,17 +695,17 @@ void Tutorial5::OnGUI( const std::shared_ptr<CommandList>& commandList, const Re
     {
         ImGui::Text( "KEYBOARD CONTROLS" );
         ImGui::BulletText( "ESC: Terminate application" );
-        ImGui::BulletText( "Alt+Enter: Toggle fullscreen" );
-        ImGui::BulletText( "F11: Toggle fullscreen" );
+        //ImGui::BulletText( "Alt+Enter: Toggle fullscreen" );
+        //ImGui::BulletText( "F11: Toggle fullscreen" );
         ImGui::BulletText( "W: Move camera forward" );
         ImGui::BulletText( "A: Move camera left" );
         ImGui::BulletText( "S: Move camera backward" );
         ImGui::BulletText( "D: Move camera right" );
         ImGui::BulletText( "Q: Move camera down" );
         ImGui::BulletText( "E: Move camera up" );
-        ImGui::BulletText( "R: Reset view" );
+        //ImGui::BulletText( "R: Reset view" );
         ImGui::BulletText( "Shift: Boost move/rotate speed" );
-        ImGui::BulletText( "Space: Animate lights" );
+        //ImGui::BulletText( "Space: Animate lights" );
         ImGui::Separator();
 
         ImGui::Text( "MOUSE CONTROLS" );
@@ -708,13 +713,24 @@ void Tutorial5::OnGUI( const std::shared_ptr<CommandList>& commandList, const Re
         ImGui::BulletText( "Mouse wheel: Zoom in/out on focal point" );
         ImGui::Separator();
 
-        ImGui::Text( "GAMEPAD CONTROLS" );
-        ImGui::BulletText( "Left analog stick: Move camera" );
-        ImGui::BulletText( "Right analog stick: Rotate camera around the focal point" );
-        ImGui::BulletText( "Left trigger: Move camera down" );
-        ImGui::BulletText( "Right trigger: Move camera up" );
-        ImGui::BulletText( "Hold left or right stick: Boost move/rotate speed" );
-        ImGui::BulletText( "D-Pad up/down: Zoom in/out on focal point" );
+        bool screenTracing = m_ScreenTracing;
+        int useSDF = m_UseSDF;
+        int depth = m_Depth;
+        glm::vec3 lightDir = m_LightDir;
+        ImGui::Checkbox("Screen Tracing", &m_ScreenTracing);
+        ImGui::RadioButton("SDF", &m_UseSDF, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("BVH", &m_UseSDF, 0);
+        ImGui::InputInt("Depth", &m_Depth);
+        m_Depth = std::max(1, m_Depth);
+        m_Depth = std::min(8, m_Depth);
+        ImGui::InputFloat3("Light Direction", &m_LightDir[0]);
+        if (screenTracing != m_ScreenTracing || useSDF != m_UseSDF || depth != m_Depth || lightDir != m_LightDir) {
+            m_HasChange = true;
+        }
+        else {
+            m_HasChange = false;
+        }
 
         ImGui::End();
     }

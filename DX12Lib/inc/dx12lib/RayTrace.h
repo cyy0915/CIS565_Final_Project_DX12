@@ -25,18 +25,24 @@ namespace dx12lib
         DirectX::XMMATRIX projection;
     };
 
+    struct RenderParm {
+        int iter;
+        int change;
+        int depth;
+        int useSDF;
+        //
+        glm::vec3 lightDir;
+        int screenTracing;
+    };
+
     namespace RayTraceParm
     {
         enum
         {
             camera,
             SDFParm,
-            geomsNum,
-            randNum,
-            iterNum,
-            geoms,
+            renderParm,
             SDFGrids,
-            materials,
             gbuffers,
             result,
             NumRootParameters
@@ -68,19 +74,22 @@ namespace dx12lib
             return m_PipelineState;
         }
 
-        void dispatch(std::shared_ptr<CommandList> commandList, std::vector<Material1> mats, CameraDataGPU camera, 
-            SDF sdfParm, std::vector<Geom> geoms, std::shared_ptr<StructuredBuffer> SDFGrids,
+        void dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU camera, bool change,
+            int depth, bool useSDF, glm::vec3 lightDir, bool screenTracing,
+            SDF sdfParm, std::shared_ptr<StructuredBuffer> SDFGrids,
             std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color);
 
         std::shared_ptr<Texture> GetResult() const {
             return m_ResultTexture;
         }
 
+        void resize(int w, int h);
     private:
         std::shared_ptr<RootSignature>       m_RootSignature;
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
         int m_Width, m_Height;
         int m_iter = 0;
+        bool m_change = true;
     };
 }  // namespace dx12lib

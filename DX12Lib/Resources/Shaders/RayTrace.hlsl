@@ -91,24 +91,22 @@ struct Intersection
     float3 normal;
     float3 color;
 };
-struct gSize
+struct RenderParm
 {
-    int size;
-};
-struct RandNum
-{
-    float n;
+    int iter;
+    int change;
+    int depth;
+    int useSDF;
+        //
+    float3 lightDir;
+    int screenTracing;
 };
 
 ConstantBuffer<Camera> camera : register(b0);
 ConstantBuffer<SDF> sdf : register(b1);
-ConstantBuffer<gSize> geomNum : register(b2);
-ConstantBuffer<RandNum> randomNum : register(b3);
-ConstantBuffer<gSize> iter : register(b4);
+ConstantBuffer<RenderParm> renderParm : register(b2);
 
 StructuredBuffer<SDFGrid> SDFGrids : register(t0);
-StructuredBuffer<Material> mats : register(t1);
-StructuredBuffer<Geom> geoms : register(t2);
 
 //gbuffers
 Texture2D<float4> normalTexture : register(t3);
@@ -382,7 +380,7 @@ void main(ComputeShaderInput IN)
 {
     float3 skyColor = float3(135, 206, 235) / 255.f;
     //float3 skyColor = float3(0, 0, 0);
-    float3 lightDir = normalize(float3(0, -3, 1));
+    float3 lightDir = normalize(renderParm.lightDir);
     float3 lightColor = float3(10, 10, 10);
     
     int x = IN.DispatchThreadID.x;
@@ -394,13 +392,14 @@ void main(ComputeShaderInput IN)
     }
     
     //generate random seed;
-    seed = uint2(iter.size, iter.size + 1) * uint2(xy);
+    seed = uint2(renderParm.iter, renderParm.iter + 1) * uint2(xy);
     
     Ray ray;
     generateRayFromCamera(x, y, ray);
-    ray.ss = true;
+    ray.ss = renderParm.screenTracing;
     
-    for (int depth = 0; depth < 5; depth++)
+    int maxDepth = renderParm.depth + 1;
+    for (int depth = 0; depth < maxDepth; depth++)
     {
         Intersection isect;
         intersect(ray, isect);
@@ -422,7 +421,15 @@ void main(ComputeShaderInput IN)
             break;
         }
         
-        float3 pos = ray.origin + ray.dir * isect.t;
+        float3 pos;
+        if (depth == 0)
+        {
+            pos = mul(camera.cameraToWorld, depthMatTexture[xy]);
+        }
+        else
+        {
+            pos = ray.origin + ray.dir * isect.t;
+        }
         float pdf = 1;
         
         //MIS, assume parallel light
@@ -458,16 +465,21 @@ void main(ComputeShaderInput IN)
         }
         else
         {
-            ray.color = ray.color * isect.color * dot(isect.normal, ray.dir) / pdf;
+            ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
         }
         
-        if (depth == 4)
+        if (depth == maxDepth - 1)
         {
             ray.color = float3(0, 0, 0);
         }
     }
-    outTexture[xy] = float4(ray.color, 1);
-    
+    //outTexture[xy] = float4(ray.color, 1);
+    if (renderParm.change)
+    {
+        outTexture[xy] = float4(0, 0, 0, 1);
+
+    }
+    outTexture[xy] = (outTexture[xy] * (renderParm.iter - 1) + float4(ray.color, 1)) / float(renderParm.iter);
     
     /*float4 pixelColor = normalTexture[1][xy];
     float z = pixelColor.x;
