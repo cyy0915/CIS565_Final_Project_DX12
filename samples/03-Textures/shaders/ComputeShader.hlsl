@@ -1,6 +1,6 @@
 #define BLOCK_SIZE 8
 
-#define SAMPLE_COUNT 500
+#define SAMPLE_COUNT 1000
 
 //Hemisphere Harmonic Coefficient
 //reference: 

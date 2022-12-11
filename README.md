@@ -1,16 +1,56 @@
-# Base code的Readme
+# Overview
+This is a GPU based path tracer. The project focus on improving performance of the path tracer using screen space tracing, ray marching with SDF, and radiance cache.
+
+# Pipeline
+![](img/pipeline.png)
+
+# Features
+### `Screen Space Tracing`
+
+Because ray marching with SDF is not very accurate, we add screen tracing to deal with direct lighting and first few bounces. And to get Gbuffers used in screen tracing, we also add a simple rasterizing pipeline
+
+Direct light  |  Direct light + 3 bounces with screen tracing
+:-------------------------:|:-------------------------:
+![](img/direct.png)        |  ![](img/direct%2Bscreen.png)
+
+
+### `Ray Marching with SDF`
+The rendering below is run on our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer).
+Ray Marching with SDF (17.6 FPS)  |  Ray Tracing  (4 FPS)
+:-------------------------:|:-------------------------:
+![](img/sdf/sdf1.PNG)        |  ![](img/sdf/rayTracing1.PNG)
+
+As we can see from the image, the performance improvement is huge. Ray marching with SDF is roughly 4 times faster than ray tracing method. Even if there are more geometries in the scene, ray marching with SDF still maintains stable FPS, while FPS would drop with ray tracing.
+However, ray marching with SDF can cause rendering in some parts of the scene inaccurate.
+
+Ray marching with low resolution SDF voxels
+![](img/sdf/sdf2.PNG)
+
+### `Radiance Cache`
+
+The current image below is buggy....
+
+![](img/sdf/Buggy_cache.png)
+
+The basic idea of radiance cache is to precompute part of point's incoming radiance, and use Hemisphere Harmonic to represent them.
+
+After precompute radiance cache, when doing path tracing and get intersection, first find the nearest radiance cache point, then use interpolation to calculate this point's diffuse radiance.
+
+But to successfully interpolate, need to compute the HSH coefficient's partial derivatives.
+
+HSH Coefficient compute    |  Ray Tracing  (4 FPS)
+:-------------------------:|:-------------------------:
+![](img/sdf/HSH_1.png)        |  ![](img/sdf/HSH_2.png)
+
+
+# Readme from Our Base Code
 
 This repository is intended to be used as a code repository for learning DirectX 12. The tutorials can be found on https://www.3dgep.com
 
 This project uses [CMake](https://cmake.org/) (3.18.3 or newer) to generate the project and solution files.
 
-To use this project, run the [GenerateProjectFiles.bat](GenerateProjectFiles.bat) script and open the generated Visual Studio solution file in the build_vs2017 or build_vs2019 folder that gets created (depending on the version of Visual Studio you have installed).  (cyy注：也可以自己用cmake)
+To use this project, run the [GenerateProjectFiles.bat](GenerateProjectFiles.bat) script and open the generated Visual Studio solution file in the build_vs2017 or build_vs2019 folder that gets created (depending on the version of Visual Studio you have installed).
 
 Assets for the samples can be downloaded using the [DownloadAssets.bat](DownloadAssets.bat) batch file located in the root folder of this project.
 
 For more instructions see [Getting Started](https://github.com/jpvanoosten/LearningDirectX12/wiki/Getting-Started).
-
-
-# Readme
-暂时用samples/tutorial3作basecode
-在dx12lib中完成了一个ComputeShader类用作compute shader示例，该类可以视为cuda的一个kernel函数，该类输入一个颜色，输出一张这个颜色的texture，compute shader每一个thread为texture中一个像素点赋值。代码文件中的注释说明了一些用法
