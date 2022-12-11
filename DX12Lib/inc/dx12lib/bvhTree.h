@@ -23,12 +23,16 @@ namespace dx12lib {
         int hasFace;
         //
         glm::vec3 point2;
-        int geomId;
+        int matId;
         //
         glm::vec4 point3;
         glm::vec4 normal1;
-        glm::vec4 normal2;
-        glm::vec4 normal3;
+        glm::vec2 texCoord1;
+        glm::vec2 texCoord2;
+        //
+        glm::vec2 texCoord3;
+        glm::vec2 padding;
+        //
         glm::vec4 triangleMinCorner;
         glm::vec4 triangleMaxCorner;
         glm::vec4 centroid;

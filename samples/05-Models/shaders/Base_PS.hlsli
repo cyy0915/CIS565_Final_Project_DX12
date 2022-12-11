@@ -8,6 +8,13 @@ struct PixelShaderInput
     float2 TexCoord    : TEXCOORD;
 };
 
+struct PixelShaderOutput
+{
+    float4 normal : SV_Target0;
+    float4 depthMat : SV_Target1;
+    float4 color : SV_Target2;
+};
+
 struct Material
 {
     float4 Diffuse;
@@ -321,7 +328,7 @@ float4 SampleTexture(Texture2D t, float2 uv, float4 c)
     return c;
 }
 
-float4 main( PixelShaderInput IN ): SV_Target
+PixelShaderOutput main( PixelShaderInput IN )
 {
     Material material = MaterialCB;
 
@@ -397,7 +404,7 @@ float4 main( PixelShaderInput IN ): SV_Target
     float4 specular = 0;
 #if ENABLE_LIGHTING
     LightResult lit = DoLighting( IN.PositionVS.xyz, N, specularPower );
-    diffuse *= lit.Diffuse;
+    //diffuse *= lit.Diffuse;
     ambient *= lit.Ambient;
     // Specular power less than 1 doesn't really make sense.
     // Ignore specular on materials with a specular power less than 1.
@@ -414,5 +421,10 @@ float4 main( PixelShaderInput IN ): SV_Target
     shadow = -N.z;
 #endif // ENABLE_LIGHTING
 
-    return float4( ( emissive + ambient + diffuse + specular ).rgb * shadow, alpha * material.Opacity );
+    PixelShaderOutput output;
+    //output.color = float4((emissive + ambient + diffuse + specular).rgb * shadow, alpha * material.Opacity);
+    output.color = float4(diffuse);
+    output.normal = float4(N, 1.f);
+    output.depthMat = IN.PositionVS;
+    return output;
 }

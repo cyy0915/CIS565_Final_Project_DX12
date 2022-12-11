@@ -17,6 +17,7 @@
 #include <dx12lib/SceneNode.h>
 #include <dx12lib/SwapChain.h>
 #include <dx12lib/Texture.h>
+#include <dx12lib/bvhTree.h>
 
 #include <assimp/DefaultLogger.hpp>
 
@@ -150,7 +151,7 @@ uint32_t Tutorial5::Run()
     auto retCode = GameFramework::Get().Run();
 
     // Make sure the loading task is finished
-    m_LoadingTask.get();
+    //m_LoadingTask.get();
 
     UnloadContent();
 
@@ -210,9 +211,35 @@ bool Tutorial5::LoadScene( const std::wstring& sceneFile )
     // Ensure that the scene is completely loaded before rendering.
     commandQueue.Flush();
 
+    //generate bvh and sdf
+    if (m_Scene) {
+        DirectX::BoundingSphere s;
+        BoundingSphere::CreateFromBoundingBox(s, m_Scene->GetAABB());
+        auto scale = 50.0f / (s.Radius * 2.0f);
+        s.Radius *= 1.1;
+        std::vector<Triangle> triangles = m_Scene->getTriangles();
+        for (auto& t : triangles) {
+            t.point1 *= scale;
+            t.point2 *= scale;
+            t.point3 *= scale;
+            t.computeLocalBoundingBox();
+        }
+
+        BVHTree bvh;
+        bvh.build(triangles);
+        SDF sdfParm;
+        sdfParm.resolution = glm::ivec3(100, 100, 100);
+        glm::vec3 center(s.Center.x, s.Center.y, s.Center.z);
+        sdfParm.minCorner = (center - s.Radius) * scale;
+        sdfParm.maxCorner = (center + s.Radius) * scale;
+        sdfParm.gridExtent = glm::vec3(s.Radius * 2 * scale /100.f);
+        m_SDFComputeShader = std::make_shared<ComputeShader>(m_Device, sdfParm, m_Scene->getMaterials().size());
+        auto& sdfcommandQueue = m_Device->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+        m_SDFComputeShader->dispatch(sdfcommandQueue, bvh, m_Scene->getMaterials());
+    }
+    
     // Loading is finished.
     m_IsLoading = false;
-
     return scene != nullptr;
 }
 
@@ -221,15 +248,16 @@ void Tutorial5::LoadContent()
     m_Device = Device::Create();
     m_Logger->info( L"Device created: {}", m_Device->GetDescription() );
 
-    m_SwapChain = m_Device->CreateSwapChain( m_Window->GetWindowHandle(), DXGI_FORMAT_R8G8B8A8_UNORM );
+    m_SwapChain = m_Device->CreateSwapChain( m_Window->GetWindowHandle(), DXGI_FORMAT_R16G16B16A16_FLOAT );
     m_GUI       = m_Device->CreateGUI( m_Window->GetWindowHandle(), m_SwapChain->GetRenderTarget() );
 
     // This magic here allows ImGui to process window messages.
     GameFramework::Get().WndProcHandler += WndProcEvent::slot( &GUI::WndProcHandler, m_GUI );
 
     // Start the loading task to perform async loading of the scene file.
-    m_LoadingTask = std::async( std::launch::async, std::bind( &Tutorial5::LoadScene, this,
-                                                               L"Assets/Models/crytek-sponza/sponza_nobanner.obj" ) );
+    LoadScene(L"Assets/Models/crytek-sponza/sponza_nobanner.obj");
+   // m_LoadingTask = std::async( std::launch::async, std::bind( &Tutorial5::LoadScene, this,
+    //                                                           L"Assets/Models/crytek-sponza/sponza_nobanner.obj" ) );
 
     // Load a few (procedural) models to represent the light sources in the scene.
     auto& commandQueue = m_Device->GetCommandQueue( D3D12_COMMAND_LIST_TYPE_COPY );
@@ -247,28 +275,34 @@ void Tutorial5::LoadContent()
     m_UnlitPSO    = std::make_shared<EffectPSO>( m_Device, false, false );
 
     // Create a color buffer with sRGB for gamma correction.
-    DXGI_FORMAT backBufferFormat  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    DXGI_FORMAT backBufferFormat  = DXGI_FORMAT_R16G16B16A16_FLOAT;
     DXGI_FORMAT depthBufferFormat = DXGI_FORMAT_D32_FLOAT;
 
     // Check the best multisample quality level that can be used for the given back buffer format.
     DXGI_SAMPLE_DESC sampleDesc = m_Device->GetMultisampleQualityLevels( backBufferFormat );
 
     // Create an off-screen render target with a single color buffer and a depth buffer.
-    auto colorDesc = CD3DX12_RESOURCE_DESC::Tex2D( backBufferFormat, m_Width, m_Height, 1, 1, sampleDesc.Count,
-                                                   sampleDesc.Quality, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
+    auto colorDesc = CD3DX12_RESOURCE_DESC::Tex2D( backBufferFormat, m_Width, m_Height, 1, 1, 1,
+                                                   0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET );
     D3D12_CLEAR_VALUE colorClearValue;
     colorClearValue.Format   = colorDesc.Format;
-    colorClearValue.Color[0] = 0.4f;
-    colorClearValue.Color[1] = 0.6f;
-    colorClearValue.Color[2] = 0.9f;
+    colorClearValue.Color[0] = 0.0f;
+    colorClearValue.Color[1] = 0.0f;
+    colorClearValue.Color[2] = 0.0f;
     colorClearValue.Color[3] = 1.0f;
 
     auto colorTexture = m_Device->CreateTexture( colorDesc, &colorClearValue );
     colorTexture->SetName( L"Color Render Target" );
+    auto normalTexture = m_Device->CreateTexture(colorDesc, &colorClearValue);
+    colorClearValue.Color[0] = 0.0f;
+    colorClearValue.Color[1] = 0.0f;
+    colorClearValue.Color[2] = 1000.0f;
+    colorClearValue.Color[3] = 1.0f;
+    auto depthMatTexture = m_Device->CreateTexture(colorDesc, &colorClearValue);
 
     // Create a depth buffer.
-    auto depthDesc = CD3DX12_RESOURCE_DESC::Tex2D( depthBufferFormat, m_Width, m_Height, 1, 1, sampleDesc.Count,
-                                                   sampleDesc.Quality, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL );
+    auto depthDesc = CD3DX12_RESOURCE_DESC::Tex2D( depthBufferFormat, m_Width, m_Height, 1, 1, 1,
+                                                   0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL );
     D3D12_CLEAR_VALUE depthClearValue;
     depthClearValue.Format       = depthDesc.Format;
     depthClearValue.DepthStencil = { 1.0f, 0 };
@@ -277,11 +311,15 @@ void Tutorial5::LoadContent()
     depthTexture->SetName( L"Depth Render Target" );
 
     // Attach the textures to the render target.
-    m_RenderTarget.AttachTexture( AttachmentPoint::Color0, colorTexture );
+    m_RenderTarget.AttachTexture( AttachmentPoint::Color2, colorTexture );
+    m_RenderTarget.AttachTexture(AttachmentPoint::Color1, depthMatTexture);
+    m_RenderTarget.AttachTexture(AttachmentPoint::Color0, normalTexture);
     m_RenderTarget.AttachTexture( AttachmentPoint::DepthStencil, depthTexture );
 
     // Make sure the copy command queue is finished before leaving this function.
     commandQueue.WaitForFenceValue( fence );
+
+    m_RayTraceComputeShader = std::make_shared<RayTrace>(m_Device, m_Width, m_Height);
 }
 
 void Tutorial5::UnloadContent() {}
@@ -391,7 +429,7 @@ void Tutorial5::OnRender()
 
     if ( m_IsLoading )
     {
-        FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+        FLOAT clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
         commandList->ClearTexture( renderTarget.GetTexture( AttachmentPoint::Color0 ), clearColor );
 
         // TODO: Render a loading screen.
@@ -404,9 +442,13 @@ void Tutorial5::OnRender()
 
         // Clear the render targets.
         {
-            FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+            FLOAT clearColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+            FLOAT clearColorDepth[] = { 0.0f, 0.0f, 1000.0f, 1.0f };
 
             commandList->ClearTexture( renderTarget.GetTexture( AttachmentPoint::Color0 ), clearColor );
+            commandList->ClearTexture(renderTarget.GetTexture(AttachmentPoint::Color1), clearColorDepth);
+            commandList->ClearTexture(renderTarget.GetTexture(AttachmentPoint::Color2), clearColor);
+
             commandList->ClearDepthStencilTexture( renderTarget.GetTexture( AttachmentPoint::DepthStencil ),
                                                    D3D12_CLEAR_FLAG_DEPTH );
         }
@@ -451,11 +493,13 @@ void Tutorial5::OnRender()
             m_Cone->Accept( unlitPass );
         }
 
-        // Resolve the MSAA render target to the swapchain's backbuffer.
-        auto swapChainBackBuffer = m_SwapChain->GetRenderTarget().GetTexture( AttachmentPoint::Color0 );
-        auto msaaRenderTarget    = m_RenderTarget.GetTexture( AttachmentPoint::Color0 );
+        m_RayTraceComputeShader->dispatch(commandList, std::vector<Material1>(), m_Camera.getGPUData(m_Width, m_Height),
+            m_SDFComputeShader->m_sdfParm, std::vector<Geom>(), m_SDFComputeShader->GetResult(),
+            m_RenderTarget.GetTexture(AttachmentPoint::Color0), m_RenderTarget.GetTexture(AttachmentPoint::Color1), m_RenderTarget.GetTexture(AttachmentPoint::Color2));
 
-        commandList->ResolveSubresource( swapChainBackBuffer, msaaRenderTarget );
+        auto swapChainBackBuffer = m_SwapChain->GetRenderTarget().GetTexture( AttachmentPoint::Color0 );
+        //commandList->ResolveSubresource( swapChainBackBuffer, msaaRenderTarget );
+        commandList->CopyResource(swapChainBackBuffer, m_RayTraceComputeShader->GetResult());
     }
 
     OnGUI( commandList, m_SwapChain->GetRenderTarget() );

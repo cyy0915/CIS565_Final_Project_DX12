@@ -37,6 +37,8 @@
 #include <GameFramework/GameFramework.h>
 
 #include <dx12lib/RenderTarget.h>
+#include <dx12lib/ComputeShader.h>
+#include <dx12lib/RayTrace.h>
 
 #include <d3d12.h>  // For D3D12_RECT
 
@@ -196,4 +198,7 @@ private:
     std::string       m_LoadingText;
 
     float m_FPS;
+
+    std::shared_ptr<dx12lib::ComputeShader> m_SDFComputeShader;
+    std::shared_ptr<dx12lib::RayTrace> m_RayTraceComputeShader;
 };

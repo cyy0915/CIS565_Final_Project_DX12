@@ -13,7 +13,7 @@ struct ComputeShaderInput
 struct SDFGrid
 {
     float dist;
-    int geomId;
+    float3 color;
 };
 
 struct SDF
@@ -22,6 +22,11 @@ struct SDF
     float4 maxCorner;
     int4 resolution;
     float4 gridExtent;
+};
+
+struct Bias
+{
+    float4 bias;
 };
 
 struct Geom {
@@ -40,6 +45,12 @@ struct Geom {
     int4 type;
 };
 
+struct Material
+{
+    int textureId;
+    float3 color;
+};
+
 struct BVHNode {
     float3 minCorner;
     int idx;
@@ -51,33 +62,42 @@ struct BVHNode {
     int hasFace;
         //
     float3 point2;
-    int geomId;
+    int matId;
         //
-    float4 point3;
+    float3 point3;
+    float pad1;
+    //
     float4 normal1;
-    float4 normal2;
-    float4 normal3;
+    float2 texCoord1;
+    float2 texCoord2;
+    //
+    float2 texCoord3;
+    float2 pad2;
+    //
     float4 triangleMinCorner;
     float4 triangleMaxCorner;
     float4 center;
 };
 
 ConstantBuffer<SDF> sdf : register(b0);
+ConstantBuffer<Bias> bias : register(b1);
 
 StructuredBuffer<BVHNode> bvhNodes : register(t0);
 
-StructuredBuffer<Geom> geoms : register(t1);
+StructuredBuffer<Material> mats : register(t1);
+
+Texture2D<float4> textures[] : register(t2);
 
 //RWTexture2D<float4> OutTexture : register(u0);
 RWStructuredBuffer<SDFGrid> sdfGrids : register(u0);
 
 // Linear clamp sampler.
-//SamplerState LinearClampSampler : register(s0);
+SamplerState LinearClampSampler : register(s0);
 
 
 
 
-float udfTriangle(float3 p, float3 a, float3 b, float3 c)
+float udfTriangle(float3 p, float3 a, float3 b, float3 c, out float3 barycentric)
 {
     float3 ba = b - a;
     float3 pa = p - a;
@@ -91,6 +111,11 @@ float udfTriangle(float3 p, float3 a, float3 b, float3 c)
     float3 cb_pb = cb * clamp(dot(cb, pb) / dot(cb, cb), 0.f, 1.f) - pb;
     float3 ac_pc = ac * clamp(dot(ac, pc) / dot(ac, ac), 0.f, 1.f) - pc;
 
+    float baryC = (sign(dot(cross(ba, nor), pa)) + 1) * dot(nor, cross(pa, ba));
+    float baryA = (sign(dot(cross(cb, nor), pb)) + 1) * dot(nor, cross(pb, cb));
+    float baryB = (sign(dot(cross(ac, nor), pc)) + 1) * dot(nor, cross(pc, ac));
+    barycentric = normalize(float3(baryA, baryB, baryC));
+    
     return sqrt(
         (sign(dot(cross(ba, nor), pa)) +
          sign(dot(cross(cb, nor), pb)) +
@@ -125,9 +150,9 @@ void main(ComputeShaderInput IN)
 {
     //DispatchThreadID.xy是二维索引，对应cuda中的索引，可以用这索引直接访问texture对应像素点float4
     
-    int x = IN.DispatchThreadID.x;
-    int y = IN.DispatchThreadID.y;
-    int z = IN.DispatchThreadID.z;
+    int x = IN.DispatchThreadID.x + bias.bias.x;
+    int y = IN.DispatchThreadID.y + bias.bias.y;
+    int z = IN.DispatchThreadID.z + bias.bias.z;
 
     if (x >= sdf.resolution.x || y >= sdf.resolution.y || z >= sdf.resolution.z) return;
     int idx = z * sdf.resolution.x * sdf.resolution.y + y * sdf.resolution.x + x;
@@ -146,8 +171,9 @@ void main(ComputeShaderInput IN)
     idxToVisit[toVisitOffset++] = 0;
 
     BVHNode minTriangle;
-    minTriangle.geomId = -1;
+    minTriangle.matId = -1;
     float minUdf = FLT_MAX;
+    float3 barycentric;
 
     while (toVisitOffset > 0)
     {
@@ -169,36 +195,45 @@ void main(ComputeShaderInput IN)
         {
             if (!bvhNodes[currIdx].hasFace) continue;
             BVHNode face = bvhNodes[currIdx];
-            float t = udfTriangle(voxelPos, face.point1, face.point2, face.point3.xyz);
+            float3 tmpbary;
+            float t = udfTriangle(voxelPos, face.point1, face.point2, face.point3, tmpbary);
 
             if (minUdf > t)
             {
                 minTriangle = bvhNodes[currIdx];
                 minUdf = t;
+                barycentric = tmpbary;
             }
         }
     }
 
 
     // will crash without this
-    if (minTriangle.geomId == -1) return;
-    int geomId = minTriangle.geomId;
+    if (minTriangle.matId == -1) return;
 
-    float3 triCenter = (minTriangle.point1 + minTriangle.point2 + minTriangle.point3.xyz) / 3.f;
+    float3 triCenter = (minTriangle.point1 + minTriangle.point2 + minTriangle.point3) / 3.f;
     float3 worldNor = normalize(triCenter - voxelPos);
-    float3 localNor = mul(geoms[geomId].inverseTransform, float4(worldNor, 0.f));
-    float3 localtriNor = mul(geoms[geomId].inverseTransform, minTriangle.normal1);
     
     // if inside
-    if (dot(localNor, localtriNor) > 0.f)
+    if (dot(worldNor, minTriangle.normal1.xyz) > 0.f)
     {
-        sdfGrids[idx].dist = -minUdf;
+        sdfGrids[idx].dist = minUdf;
     }
     else
     {
         sdfGrids[idx].dist = minUdf;
     }
 
-    sdfGrids[idx].geomId = minTriangle.geomId;
+    //sample and compute color
+    if (mats[minTriangle.matId].textureId == -1)
+    {
+        sdfGrids[idx].color = mats[minTriangle.matId].color;
+    }
+    else
+    {
+        float2 texCoord = minTriangle.texCoord1 * barycentric.x + minTriangle.texCoord2 * barycentric.y + minTriangle.texCoord3 * barycentric.z;
+        sdfGrids[idx].color = textures[mats[minTriangle.matId].textureId].SampleLevel(LinearClampSampler, texCoord, 0);
+    }
+    
 }
 

@@ -88,15 +88,20 @@ EffectPSO::EffectPSO( std::shared_ptr<dx12lib::Device> device, bool enableLighti
     } pipelineStateStream;
 
     // Create a color buffer with sRGB for gamma correction.
-    DXGI_FORMAT backBufferFormat  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    DXGI_FORMAT backBufferFormat  = DXGI_FORMAT_R16G16B16A16_FLOAT;
     DXGI_FORMAT depthBufferFormat = DXGI_FORMAT_D32_FLOAT;
 
     // Check the best multisample quality level that can be used for the given back buffer format.
-    DXGI_SAMPLE_DESC sampleDesc = m_Device->GetMultisampleQualityLevels( backBufferFormat );
+    //DXGI_SAMPLE_DESC sampleDesc = m_Device->GetMultisampleQualityLevels( backBufferFormat );
+    DXGI_SAMPLE_DESC sampleDesc({ 1, 0 });
+
 
     D3D12_RT_FORMAT_ARRAY rtvFormats = {};
-    rtvFormats.NumRenderTargets      = 1;
+    rtvFormats.NumRenderTargets      = 3;
     rtvFormats.RTFormats[0]          = backBufferFormat;
+    rtvFormats.RTFormats[1] = backBufferFormat;
+    rtvFormats.RTFormats[2] = backBufferFormat;
+
 
     CD3DX12_RASTERIZER_DESC rasterizerState( D3D12_DEFAULT );
     if (m_EnableDecal) {

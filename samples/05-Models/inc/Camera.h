@@ -32,6 +32,7 @@
 
 
 #include <DirectXMath.h>
+#include <dx12lib/RayTrace.h>
 
 // When performing transformations on the camera, 
 // it is sometimes useful to express which space this 
@@ -100,6 +101,17 @@ public:
     void XM_CALLCONV Translate( DirectX::FXMVECTOR translation, Space space = Space::Local );
     void Rotate( DirectX::FXMVECTOR quaternion );
     void XM_CALLCONV MoveFocalPoint( DirectX::FXMVECTOR focalPoint, Space space = Space::Local );
+
+    dx12lib::CameraDataGPU getGPUData(int width, int height) {
+        dx12lib::CameraDataGPU r;
+        r.cameraToWorld = get_InverseViewMatrix();
+        r.position = r.cameraToWorld.r[3];
+        r.projection = get_ProjectionMatrix();
+        r.resolution = DirectX::XMFLOAT2(width, height);
+        float pl = tan(m_vFoV / 2.f) / (float)height * 2.f;
+        r.pixelLength = { pl, pl };
+        return r;
+    }
 
 protected:
     virtual void UpdateViewMatrix() const;

@@ -84,7 +84,7 @@ bool Scene::LoadSceneFromFile( CommandList& commandList, const std::wstring& fil
         importer.SetPropertyInteger( AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_POINT | aiPrimitiveType_LINE );
 
         unsigned int preprocessFlags = aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_OptimizeGraph |
-                                       aiProcess_ConvertToLeftHanded | aiProcess_GenBoundingBoxes;
+                                       aiProcess_ConvertToLeftHanded | aiProcess_GenBoundingBoxes | aiProcess_GenNormals;
         scene = importer.ReadFile( filePath.string(), preprocessFlags );
 
         if ( scene )
@@ -381,10 +381,11 @@ void Scene::ImportMesh( CommandList& commandList, const aiMesh& aiMesh )
                 newFace.point3 = glm::vec3( vertex3Data.Position.x, vertex3Data.Position.y, vertex3Data.Position.z );
                 
                 newFace.normal1 = glm::vec3( vertex1Data.Normal.x, vertex1Data.Normal.y, vertex1Data.Normal.z );
-                newFace.normal2 = glm::vec3( vertex2Data.Normal.x, vertex2Data.Normal.y, vertex2Data.Normal.z );
-                newFace.normal3 = glm::vec3( vertex3Data.Normal.x, vertex3Data.Normal.y, vertex3Data.Normal.z );
+                newFace.texCoord1 = glm::vec2(vertex1Data.TexCoord.x, vertex1Data.TexCoord.y);
+                newFace.texCoord2 = glm::vec2(vertex2Data.TexCoord.x, vertex2Data.TexCoord.y);
+                newFace.texCoord3 = glm::vec2(vertex3Data.TexCoord.x, vertex3Data.TexCoord.y);
 
-                newFace.geomId = mp_geoms.size();
+                newFace.matId = aiMesh.mMaterialIndex;
 
                 mp_faces.push_back( newFace );
             }

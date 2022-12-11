@@ -54,12 +54,8 @@ namespace dx12lib
         int faceNum;
 
         GeomGPU getGPUData() {
-            glm::mat4 transformT = glm::transpose(transform);
-            glm::mat4 inverseTransformT = glm::transpose(inverseTransform);
-            glm::mat4 invTransposeT = glm::transpose(invTranspose);
-
             return GeomGPU({ materialid, translation, rotation, faceStartIdx, scale, faceNum,
-                DirectX::XMFLOAT4X4(&transformT[0][0]), DirectX::XMFLOAT4X4(&inverseTransformT[0][0]), DirectX::XMFLOAT4X4(&invTransposeT[0][0]),
+                DirectX::XMFLOAT4X4(&transform[0][0]), DirectX::XMFLOAT4X4(&inverseTransform[0][0]), DirectX::XMFLOAT4X4(&invTranspose[0][0]),
                 type });
         }
     };
@@ -69,10 +65,11 @@ namespace dx12lib
         glm::vec3 point2;
         glm::vec3 point3;
         glm::vec3 normal1;
-        glm::vec3 normal2;
-        glm::vec3 normal3;
+        glm::vec2 texCoord1;
+        glm::vec2 texCoord2;
+        glm::vec2 texCoord3;
 #if USE_BVH_FOR_INTERSECTION
-        int geomId;
+        int matId;
         glm::vec3 minCorner;
         glm::vec3 maxCorner;
         glm::vec3 centroid;
@@ -98,8 +95,6 @@ namespace dx12lib
             point2 = glm::vec3(geom.transform * glm::vec4(point2, 1.0f));
             point3 = glm::vec3(geom.transform * glm::vec4(point3, 1.0f));
             normal1 = glm::vec3(geom.transform * glm::vec4(normal1, 0.f));
-            normal2 = glm::vec3(geom.transform * glm::vec4(normal2, 0.f));
-            normal3 = glm::vec3(geom.transform * glm::vec4(normal3, 0.f));
         }
 #endif
     };
@@ -194,7 +189,7 @@ namespace dx12lib
 
     struct SDFGrid {
         float dist;
-        int geomId;
+        glm::vec3 color;
     };
 
 

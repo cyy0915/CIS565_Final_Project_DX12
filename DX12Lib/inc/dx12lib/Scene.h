@@ -84,6 +84,9 @@ public:
 
 
     std::vector<Triangle> getTriangles() const;
+    std::vector<std::shared_ptr<Material>> getMaterials() const {
+        return m_Materials;
+    }
 
 protected:
     friend class CommandList;

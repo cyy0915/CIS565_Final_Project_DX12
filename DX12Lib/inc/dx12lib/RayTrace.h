@@ -32,6 +32,8 @@ namespace dx12lib
             camera,
             SDFParm,
             geomsNum,
+            randNum,
+            iterNum,
             geoms,
             SDFGrids,
             materials,
@@ -68,7 +70,7 @@ namespace dx12lib
 
         void dispatch(std::shared_ptr<CommandList> commandList, std::vector<Material1> mats, CameraDataGPU camera, 
             SDF sdfParm, std::vector<Geom> geoms, std::shared_ptr<StructuredBuffer> SDFGrids,
-            std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid);
+            std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color);
 
         std::shared_ptr<Texture> GetResult() const {
             return m_ResultTexture;
@@ -79,5 +81,6 @@ namespace dx12lib
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
         int m_Width, m_Height;
+        int m_iter = 0;
     };
 }  // namespace dx12lib

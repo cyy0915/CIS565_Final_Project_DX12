@@ -104,9 +104,9 @@ void BVHTree::recursiveBuild(int nodeIdx, std::vector<Triangle>& faces)
 void BVHTree::getGPUData(std::vector<BVHNodeGPU>& data) {
 	for (auto& node : bvhNodes) {
 		data.push_back(BVHNodeGPU({ node.minCorner, node.idx, node.maxCorner, node.isLeaf,
-			node.face.point1, node.hasFace, node.face.point2, node.face.geomId,
-			glm::vec4(node.face.point3, 1.f), glm::vec4(node.face.normal1, 1.f), glm::vec4(node.face.normal2, 1.f),
-			glm::vec4(node.face.normal3, 1.f), glm::vec4(node.face.minCorner, 1.f), glm::vec4(node.face.maxCorner, 1.f),
+			node.face.point1, node.hasFace, node.face.point2, node.face.matId,
+			glm::vec4(node.face.point3, 1.f), glm::vec4(node.face.normal1, 1.f), node.face.texCoord1, node.face.texCoord2, node.face.texCoord3,
+			glm::vec2(0), glm::vec4(node.face.minCorner, 1.f), glm::vec4(node.face.maxCorner, 1.f),
 			glm::vec4(node.face.centroid, 1.f) }));
 	}
 }
