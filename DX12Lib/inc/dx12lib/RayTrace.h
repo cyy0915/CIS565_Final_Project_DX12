@@ -53,7 +53,6 @@ namespace dx12lib
             materials,
             geoms,
             gbuffers,
-            radianceCache =6
         };
     }
     class RayTrace

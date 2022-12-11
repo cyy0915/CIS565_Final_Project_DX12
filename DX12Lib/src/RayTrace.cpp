@@ -27,7 +27,7 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
     rootParameters[RayTraceParm::geoms].InitAsShaderResourceView(RayTraceRegisterT::geoms);
     rootParameters[RayTraceParm::SDFGrids].InitAsShaderResourceView(RayTraceRegisterT::sdf);
     //Radiance Cache
-    rootParameters[RayTraceParm::RadianceCacheParam].InitAsShaderResourceView( RayTraceRegisterT::radianceCache );
+    rootParameters[RayTraceParm::RadianceCacheParam].InitAsUnorderedAccessView( 1);
 
     rootParameters[RayTraceParm::materials].InitAsShaderResourceView(RayTraceRegisterT::materials);
     rootParameters[RayTraceParm::gbuffers].InitAsDescriptorTable(1, &texturesSRV);
@@ -78,7 +78,7 @@ void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, std::vector<Ma
     commandList->SetComputeDynamicStructuredBuffer(RayTraceParm::geoms, geomsGPU);
     commandList->SetShaderResourceView(RayTraceParm::SDFGrids, sdfGrids);
     //Radiance Cache
-    commandList->SetShaderResourceView( RayTraceParm::RadianceCacheParam, radianceCache );
+
 
     std::vector<MaterialGPU> matsData;
     for (auto m : mats) {
@@ -90,6 +90,7 @@ void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, std::vector<Ma
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 2, color);
 
     commandList->SetUnorderedAccessView(RayTraceParm::result, 0, m_ResultTexture, 0);
+    commandList->SetUnorderedAccessView(RayTraceParm::RadianceCacheParam, radianceCache);
 
     commandList->Dispatch(Math::DivideByMultiple(m_Width, 8), Math::DivideByMultiple(m_Height, 8));
 }

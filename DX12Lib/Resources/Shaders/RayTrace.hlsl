@@ -130,9 +130,9 @@ StructuredBuffer<Geom> geoms : register(t2);
 Texture2D<float4> normalTexture : register(t3);
 Texture2D<float4> depthMatTexture : register(t4);
 Texture2D<float4> colorTexture : register(t5);
-StructuredBuffer<RadianceCache> radianceCache : register(t6);
 
 RWTexture2D<float4> outTexture : register(u0);
+RWStructuredBuffer<RadianceCache> radianceCache : register(u1);
 
 // Linear clamp sampler.
 //SamplerState LinearClampSampler : register(s0);
@@ -574,7 +574,6 @@ void main(ComputeShaderInput IN)
             #if USE_RADIANCE_CACHE
             float3 isectPoint = pos;
             ComputePointRadianceWeight(isectPoint, isect);
-            //ray.color = ray.color *isect.inputRadiance * isect.color * dot(isect.normal, ray.dir) / pdf;
             ray.color = isect.inputRadiance;
             #else
             ray.color = ray.color * isect.color * dot(isect.normal, ray.dir) / pdf;
