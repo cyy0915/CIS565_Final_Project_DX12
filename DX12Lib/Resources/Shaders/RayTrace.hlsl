@@ -33,23 +33,6 @@ struct SDF
     int pad3;
 };
 
-struct Geom
-{
-    int materialid;
-    float3 translation;
-        //
-    float3 rotation;
-    int faceStartIdx; // use with array of Triangle
-        //
-    float3 scale;
-    int faceNum;
-        //
-    float4x4 transform;
-    float4x4 inverseTransform;
-    float4x4 invTranspose;
-    int4 type;
-};
-
 struct Camera
 {
     float4 position;
@@ -59,17 +42,33 @@ struct Camera
     matrix projection;
 };
 
-struct Material {
-    float3 color;
-    float exponent;
+struct BVHNode
+{
+    float3 minCorner;
+    int idx;
         //
-    float3 specularColor;
-    float hasReflective;
+    float3 maxCorner;
+    int isLeaf;
         //
-    float hasRefractive;
-    float indexOfRefraction;
-    float emittance;
-    float padding;
+    float3 point1;
+    int hasFace;
+        //
+    float3 point2;
+    int matId;
+        //
+    float3 point3;
+    float pad1;
+    //
+    float4 normal1;
+    float2 texCoord1;
+    float2 texCoord2;
+    //
+    float2 texCoord3;
+    float2 pad2;
+    //
+    float4 triangleMinCorner;
+    float4 triangleMaxCorner;
+    float4 center;
 };
 
 struct Ray
@@ -107,11 +106,12 @@ ConstantBuffer<SDF> sdf : register(b1);
 ConstantBuffer<RenderParm> renderParm : register(b2);
 
 StructuredBuffer<SDFGrid> SDFGrids : register(t0);
+StructuredBuffer<BVHNode> bvhNodes : register(t1);
 
 //gbuffers
-Texture2D<float4> normalTexture : register(t3);
-Texture2D<float4> depthMatTexture : register(t4);
-Texture2D<float4> colorTexture : register(t5);
+Texture2D<float4> normalTexture : register(t2);
+Texture2D<float4> depthMatTexture : register(t3);
+Texture2D<float4> colorTexture : register(t4);
 
 RWTexture2D<float4> outTexture : register(u0);
 
@@ -256,7 +256,7 @@ float sdfIntersectionTest(in Ray r, out float3 intersectionPoint, out float3 nor
 
     normal = float3(0.f, 0.f, 0.f);
     //normal = estimateNormal(r.origin, sdf, SDFGrids);
-    float t = sdf.gridExtent.x * 1.8f;
+    float t = 0.3f;
     int maxMarchSteps = 64;
     float3 lastRayMarchPos = r.origin;
     for (int i = 0; i < maxMarchSteps; i++)

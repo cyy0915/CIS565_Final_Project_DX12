@@ -44,6 +44,7 @@ namespace dx12lib
             renderParm,
             SDFGrids,
             gbuffers,
+            bvh,
             result,
             NumRootParameters
         };
@@ -54,8 +55,7 @@ namespace dx12lib
         enum
         {
             sdf,
-            materials,
-            geoms,
+            bvh,
             gbuffers,
         };
     }
@@ -77,7 +77,7 @@ namespace dx12lib
         void dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU camera, bool change,
             int depth, bool useSDF, glm::vec3 lightDir, bool screenTracing,
             SDF sdfParm, std::shared_ptr<StructuredBuffer> SDFGrids,
-            std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color);
+            std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color, std::shared_ptr<StructuredBuffer> bvh);
 
         std::shared_ptr<Texture> GetResult() const {
             return m_ResultTexture;

@@ -214,7 +214,11 @@ bool Tutorial5::LoadScene( const std::wstring& sceneFile )
     if (m_Scene) {
         auto aabb = m_Scene->GetAABB();
         float longAxis = std::max(std::max(aabb.Extents.x, aabb.Extents.y), aabb.Extents.z);
-        auto scale = 50.0f / (longAxis * 2.0f);
+        
+        DirectX::BoundingSphere s;
+        BoundingSphere::CreateFromBoundingBox( s, scene->GetAABB() );
+        auto scale = 50.0f / ( s.Radius * 2.0f );
+
         glm::vec3 center(aabb.Center.x, aabb.Center.y, aabb.Center.z);
         glm::vec3 extents(aabb.Extents.x, aabb.Extents.y, aabb.Extents.z);
         extents *= 1.2f * scale;
@@ -231,7 +235,7 @@ bool Tutorial5::LoadScene( const std::wstring& sceneFile )
         BVHTree bvh;
         bvh.build(triangles);
         SDF sdfParm;
-        int resolution = 300;
+        int resolution = 600;
         sdfParm.gridExtent = glm::vec3(longAxis * 2 * scale / (float)resolution);
         sdfParm.resolution = glm::ivec3(extents * 2.f / sdfParm.gridExtent);
         sdfParm.minCorner = center - extents;
@@ -268,7 +272,7 @@ void Tutorial5::LoadContent()
 
     m_Sphere = commandList->CreateSphere( 0.1f );
     m_Cone   = commandList->CreateCone( 0.1f, 0.2f );
-    m_Axis   = commandList->LoadSceneFromFile( L"Assets/Models/axis_of_evil.nff" );
+    //m_Axis   = commandList->LoadSceneFromFile( L"Assets/Models/axis_of_evil.nff" );
 
     auto fence = commandQueue.ExecuteCommandList( commandList );
 
@@ -360,10 +364,10 @@ void Tutorial5::OnUpdate( UpdateEventArgs& e )
     m_CameraController.Update( e );
 
     // Move the Axis model to the focal point of the camera.
-    XMVECTOR cameraPoint = m_Camera.get_FocalPoint();
+    /*XMVECTOR cameraPoint = m_Camera.get_FocalPoint();
     XMMATRIX translationMatrix = XMMatrixTranslationFromVector( cameraPoint );
     XMMATRIX scaleMatrix = XMMatrixScaling( 0.01f, 0.01f, 0.01f );
-    m_Axis->GetRootNode()->SetLocalTransform( scaleMatrix * translationMatrix );
+    m_Axis->GetRootNode()->SetLocalTransform( scaleMatrix * translationMatrix );*/
 
     XMMATRIX viewMatrix = m_Camera.get_ViewMatrix();
 
@@ -464,7 +468,7 @@ void Tutorial5::OnRender()
         // Render the scene.
         // Opaque pass.
         m_Scene->Accept( opaquePass );
-        m_Axis->Accept( unlitPass );
+        //m_Axis->Accept( unlitPass );
 
         // Transparent pass.
         m_Scene->Accept( transparentPass );
@@ -500,7 +504,8 @@ void Tutorial5::OnRender()
         m_RayTraceComputeShader->dispatch(commandList, m_Camera.getGPUData(m_Width, m_Height), m_Camera.m_hasChange || m_HasChange, 
             m_Depth, m_UseSDF, m_LightDir, m_ScreenTracing,
             m_SDFComputeShader->m_sdfParm, m_SDFComputeShader->GetResult(),
-            m_RenderTarget.GetTexture(AttachmentPoint::Color0), m_RenderTarget.GetTexture(AttachmentPoint::Color1), m_RenderTarget.GetTexture(AttachmentPoint::Color2));
+            m_RenderTarget.GetTexture( AttachmentPoint::Color0 ), m_RenderTarget.GetTexture( AttachmentPoint::Color1 ),
+            m_RenderTarget.GetTexture( AttachmentPoint::Color2 ), m_SDFComputeShader->m_bvhResource);
 
         auto swapChainBackBuffer = m_SwapChain->GetRenderTarget().GetTexture( AttachmentPoint::Color0 );
         //commandList->ResolveSubresource( swapChainBackBuffer, msaaRenderTarget );

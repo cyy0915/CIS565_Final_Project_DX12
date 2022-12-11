@@ -24,6 +24,8 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
 
     rootParameters[RayTraceParm::SDFGrids].InitAsShaderResourceView(RayTraceRegisterT::sdf);
     rootParameters[RayTraceParm::gbuffers].InitAsDescriptorTable(1, &texturesSRV);
+
+    rootParameters[RayTraceParm::bvh].InitAsShaderResourceView( RayTraceRegisterT::bvh );
     rootParameters[RayTraceParm::result].InitAsDescriptorTable(1, &resultUAV);
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(RayTraceParm::NumRootParameters, rootParameters);
     m_RootSignature = device->CreateRootSignature(rootSignatureDesc.Desc_1_1);
@@ -54,7 +56,7 @@ void RayTrace::resize(int w, int h) {
 void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU camera, bool change, 
     int depth, bool useSDF, glm::vec3 lightDir, bool screenTracing,
     SDF sdfParm, std::shared_ptr<StructuredBuffer> sdfGrids,
-    std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color) {
+    std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color, std::shared_ptr<StructuredBuffer> bvh) {
     change = change || m_change;
     m_change = false;
     if (change) {
@@ -73,6 +75,7 @@ void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU 
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 0, normal);
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 1, depthMatid);
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 2, color);
+    commandList->SetShaderResourceView( RayTraceParm::bvh, bvh );
 
     commandList->SetUnorderedAccessView(RayTraceParm::result, 0, m_ResultTexture, 0);
 

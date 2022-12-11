@@ -79,13 +79,13 @@ namespace dx12lib
         }
 
         SDF m_sdfParm;
+        std::shared_ptr<StructuredBuffer> m_bvhResource;
 
     private:
         std::shared_ptr<RootSignature>       m_RootSignature;
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
         std::shared_ptr<StructuredBuffer> m_Result;
-        std::shared_ptr<StructuredBuffer> m_bvhResource;
         int m_textureNum;
     };
 }  // namespace dx12lib
