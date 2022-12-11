@@ -298,11 +298,9 @@ float sdfIntersectionTest(in Ray r, out float3 intersectionPoint, out float3 nor
             color = SDFGrids[currSDFGrid].color;
             return t;
         }
-
         // Move along the view ray
         t += SDFGrids[currSDFGrid].dist;
         lastRayMarchPos = rayMarchPos;
-
     }
 
     return -1.f;
@@ -396,14 +394,13 @@ float3 calculateRandomDirectionInHemisphere(float3 normal, out float pdf)
 
 void precomputeRadianceCache(
     Ray ray,
-    Intersection intersect,
+    Intersection insect,
     float3 normal,
-    RadianceCache radianceCache
+    out RadianceCache radianceCache
   )
 {
-
     float factor = 2 * PI / SAMPLE_COUNT;
-
+    float3 pos = ray.origin + ray.dir * insect.t;
     // generate n sample light
     //N is SAMPLE_COUNT
     for (int i = 0; i < SAMPLE_COUNT; i++)
@@ -417,20 +414,21 @@ void precomputeRadianceCache(
         newRay.dir = normalize(newRay.dir);
         //Get the generated rayDir's intersection BSDF cache
         //newRay origin is intersection point
-        newRay.origin = ray.origin + ray.dir * intersect.t;
+        newRay.origin = ray.origin + ray.dir * insect.t;
 
         Intersection newIsect;
         intersect(newRay, newIsect);
-        
-        radianceCache += newIsect.color / SAMPLE_COUNT;
-        radianceCache.cachePoint = intersect;
+        if (newIsect.hit)
+        {
+            radianceCache.cachedRadiance += newIsect.color / SAMPLE_COUNT;
+        }
     }
+    radianceCache.cachePoint = pos;
 }
 
 void ComputePointRadianceWeight(
     float3 isectPoint, 
-    Intersection isect,
-    RadianceCache radianceCache[],
+    Intersection isect
     )
 {
     //This is already in GPU
@@ -471,8 +469,8 @@ void ComputePointRadianceWeight(
     float weight_1 = 1.f / (distance_1 * distance_1);
     float weight_2 = 1.f / (distance_2 * distance_2);
     
-    float radiance_1 = radianceCache[nearestCacheIndex];
-    float radiance_2 = radianceCache[secondNearestCacheIndex];
+    float3 radiance_1 = radianceCache[nearestCacheIndex].cachedRadiance;
+    float3 radiance_2 = radianceCache[secondNearestCacheIndex].cachedRadiance;
     
     float sum = weight_1 + weight_2;
     weight_1 = weight_1 / sum;
@@ -497,23 +495,23 @@ void main(ComputeShaderInput IN)
     {
         return;
     }
-    
     //generate random seed;
     seed = uint2(iter.size, iter.size + 1) * uint2(xy);
-    
     Ray ray;
     generateRayFromCamera(x, y, ray);
     ray.ss = true;
     //precompute
     #if USE_RADIANCE_CACHE
     //cache first point
-    Intersection isect;
-    intersect(ray, isect);
-    RadianceCache tempCache;
-    if (isect.hit)
-    {
-        precomputeRadianceCache(ray, isect, isect.normal, tempCache);
-    }
+        Intersection isect;
+        intersect(ray, isect);
+        RadianceCache tempCache;
+        if (isect.hit)
+        {
+            precomputeRadianceCache(ray, isect, isect.normal, tempCache);
+        }
+        int cacheID = x * y;
+        radianceCache[cacheID] = tempCache;
 #endif
         for (int depth = 0; depth < 5; depth++)
         {
@@ -575,9 +573,12 @@ void main(ComputeShaderInput IN)
             {
             #if USE_RADIANCE_CACHE
             float3 isectPoint = pos;
-            ComputePointRadianceWeight(isectPoint, isect, radianceCache);
-            #endif
-                ray.color = ray.color * isect.color * dot(isect.normal, ray.dir) / pdf;
+            ComputePointRadianceWeight(isectPoint, isect);
+            //ray.color = ray.color *isect.inputRadiance * isect.color * dot(isect.normal, ray.dir) / pdf;
+            ray.color = isect.inputRadiance;
+            #else
+            ray.color = ray.color * isect.color * dot(isect.normal, ray.dir) / pdf;
+           #endif
         }
         
             if (depth == 4)
@@ -586,7 +587,6 @@ void main(ComputeShaderInput IN)
             }
         }
     outTexture[xy] = float4(ray.color, 1);
-    
     
     /*float4 pixelColor = normalTexture[1][xy];
     float z = pixelColor.x;
