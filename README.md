@@ -18,13 +18,19 @@ Direct light  |  Direct light + 3 bounces with screen tracing
 
 
 ### `Ray Marching with SDF`
-The render results below is produced with our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer).
+Ray marching using signed distance field (SDF) is a intersection testing method which is typically faster than ray tracing. Ray marching against primitives are frequently used since it's fast and SDF of primitives can be easily expressed as mathmatical formulas. However, ray marching against arbitrary mesh becomes complicated because the SDF of arbitrary mesh can't be expressed with formulas. Therefore, we want to generate SDF for arbitrary mesh so that ray marching can be applied on any mesh.
+
+The basic idea of our implementation is that we create a bunch of voxels to approximately represent every position in the space. When ray marches to a voxel, it knows the the distance to the next closest triangle based on what's stored in the voxel. Then the ray is able to march with the biggest step to save time. <br/>
+
+**The render results below are produced with our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer)**.
 Ray Marching with SDF (17.6 FPS)  |  Ray Tracing  (4 FPS)
 :-------------------------:|:-------------------------:
 ![](img/sdf/sdf1.PNG)        |  ![](img/sdf/rayTracing1.PNG)
 
-As we can see from the image, the performance improvement is huge. Ray marching with SDF is roughly 4 times faster than ray tracing method. Even if there are more geometries in the scene, ray marching with SDF still maintains stable FPS, while FPS would drop with ray tracing.
-However, ray marching with SDF can cause rendering in some parts of the scene inaccurate.
+As we can see from the image, the performance improvement is huge. Ray marching with SDF is much faster than ray tracing method. Even if there are more geometries in the scene, ray marching with SDF still maintains stable FPS, while FPS would drop with ray tracing.
+However, ray marching with SDF can cause rendering in some parts of the scene inaccurate. <br/>
+
+In addition, ray marching with low resolution SDF voxels also produce inaccurate results.
 
 Ray marching with low resolution SDF voxels (run on CUDA path tracer)
 ![](img/sdf/sdf2.PNG)
@@ -51,7 +57,7 @@ HSH Coefficient compute    |  Ray Tracing  (4 FPS)
 
 # Performance Analysis
 
-### How much faster is ray marching with SDF comparing to ray tracing with BVH?
+### **How much faster is ray marching with SDF comparing to ray tracing with BVH?**
 
 ![](img/SDF_BVH_comparison.PNG)
 
@@ -60,11 +66,17 @@ As we can see, with increasing number of faces, the FPS of ray marching method i
 The reason of this result is that once the SDF voxels are generated with a fixed resolution, the performance of ray marching would be fixed as well. Every ray marching step is based on the distance to the closest triangle. Within a few steps, intersection testing would be done. Thus, the complexity of ray marching is independent of the number of triangles. For ray tracing methods, however, it has to find the closest triangle intersection by iterating through all triangles. Even with BVH acceleration structure, the complexity is still related to the number of triangles. That's why ray marching is much faster than ray tracing. It becomes more obvious if there are more triangles in a scene.
 
 
-### How does resolution of SDF affect the performance of the path tracer?
+### **How does resolution of SDF affect the performance of the path tracer?**
 
+![](img/SDF_resolution_comparison.PNG)
 
+According to the data, when the resolution is low, the performance of the path tracer imporves as the resolution increases. After reaching a threshold, the performance of the path tracer won't improve anymore.
 
+This is because when the resolution of SDF is low, the number of voxels is not enough to contain every triangles in a single voxel. Ray marching is fast since there aren't many voxels for marching. However, the rendering result would be very inaccurate because the closest distance to triangle stored in a voxel cannot accurately represent the closest distance to triangle from the position of marching ray.
 
+When the resolution is high enough, a voxel can approxiamate the closest distance to triangle from the position of marching ray if the marhing ray is within the voxel. The total marching steps would be the same even if the resolution increases. Thus, the performance would remain the same.
+
+It's worth noticing that the FPS suddenly drops a lot when the resolution is 500 x 500 x 500. We haven't figure out the reason of this phenomenon.
 
 
 # Readme from Our Base Code
