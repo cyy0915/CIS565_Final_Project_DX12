@@ -505,7 +505,23 @@ void main(ComputeShaderInput IN)
     int maxDepth = renderParm.depth + 1;
     for (int depth = 0; depth < maxDepth; depth++)
     {
-        Intersection isect;
+#if USE_RADIANCE_CACHE
+        int cacheIdx = x * y;
+        if (depth == 1)
+        {
+            Intersection newIntersect;
+            intersect(ray, newIntersect);
+            RadianceCache tempCache;
+            if (newIntersect.hit)
+            {
+                precomputeRadianceCache(ray, newIntersect,newIntersect.normal, tempCache);
+                radianceCache[cacheIdx] = tempCache;
+            }
+        }
+        
+#endif
+        
+            Intersection isect;
         intersect(ray, isect);
         if (!isect.hit)
         {
@@ -535,7 +551,7 @@ void main(ComputeShaderInput IN)
             pos = ray.origin + ray.dir * isect.t;
         }
         float pdf = 1;
-        
+
         //MIS, assume parallel light
             if (dot(isect.normal, lightDir) > 0)
             {
@@ -569,6 +585,13 @@ void main(ComputeShaderInput IN)
         }
         else
         {
+            #if USE_RADIANCE_CACHE
+            
+            ComputePointRadianceWeight(pos, isect);
+           // ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
+            ray.color = isect.inputRadiance;
+            #endif
+            
             ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
         }
         
@@ -585,32 +608,5 @@ void main(ComputeShaderInput IN)
     }
     outTexture[xy] = (outTexture[xy] * (renderParm.iter - 1) + float4(ray.color, 1)) / float(renderParm.iter);
     
-    /*float4 pixelColor = normalTexture[1][xy];
-    float z = pixelColor.x;
-    float3 normal = normalTexture[0][xy].xyz;
-    float d = z / ray.dirVS.z;
-    float3 p = ray.dirVS * d;
-    //float3 newdir = normalize(ray.dirVS + 2 * normal);
-    float3 newdir = normalize(rng(xy / 1000.f + randomNum.n, z + randomNum.n));
-    int2 hitpixel;
-    float3 hitpoint;
-    bool hit = false;
-    float3 r = traceScreenSpace(p, newdir, 0.1, 1, 0.5, 400, hitpixel, hitpoint, hit);
-    
-    float4 currColor;
-    if (hit)
-    {
-        //outTexture[xy] = float4(1, 1, 1, 1);
-        currColor = normalTexture[2][xy] + normalTexture[2][hitpixel];
-    }
-    else
-    {
-        //outTexture[xy] = float4(0, 0, 0, 1);
-        currColor = normalTexture[2][xy];
-    }
-    outTexture[xy] = (outTexture[xy] * (iter.size - 1) + currColor) / float(iter.size);*/
-
-    //outTexture[xy] = colorTexture[xy];
-
 }
 
