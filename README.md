@@ -56,20 +56,33 @@ Ray marching with low resolution SDF voxels (run on DirectX 12 path tracer)
 
 ### `Radiance Cache`
 
-The current image below is buggy....
+![](img/pipeline_rc.jpg)
 
-![](img/sdf/Buggy_cache.png)
+The basic idea of radiance cache is to precompute part of point's incoming radiance, and use Hemisphere Sperical Harmonic function to encode them.
 
-The basic idea of radiance cache is to precompute part of point's incoming radiance, and use Hemisphere Harmonic to represent them.
+After getting cached points, when doing ray marching in SDF and getting intersections, for each intersection need to check the cache list to find the nearest point, and then compute it's translational ingradient value to interpolate between these two points.
 
-After precompute radiance cache, when doing path tracing and get intersection, first find the nearest radiance cache point, then use interpolation to calculate this point's diffuse radiance.
-
-But to successfully interpolate, need to compute the HSH coefficient's partial derivatives.
-
-HSH Coefficient compute    |  Ray Tracing  (4 FPS)
+Hemisphere Spherical Harmonic Function |  Derivative Computation Formula
 :-------------------------:|:-------------------------:
-![](img/sdf/HSH_1.png)        |  ![](img/sdf/HSH_2.png)
+![](img/sdf/HSH_1.png)       | ![](img/sdf/HSH_2.png)
 
+Then after having these values it will be possible to get the interpolated radiance value by using these formulas:
+
+<div style="text-align: center">
+<img src='img/formula.png'/>
+</div>
+
+after computing x direction, you also need to compute y direction. The formula picture express is as followed:
+
+<div style="text-align: center">
+<img src='img/derivatives.png'/>
+</div>
+
+Though the implement has been finished and looked right, but in real test, we find out that this computation is too heavy because every intersection need to check whether this point has been cached or having near cached point, the computation complexity is very high, and instead of acclerating, it will slow down the whole process greatly, perhaps we made something wrong and need further studying.
+
+Render with Radiance Cache| Pure Radiance Cache
+:-------------------------:|:--------------------:
+![](img/radianceCache.png) | ![](img/cache.png)
 
 ### `Small trick to soften the shadow`
 Notice that the shadow of the parallel light must be related to 3D ray marching (we don't know if there are objects over the screen space), so the shape of the shadow is always jagged because of the voxel based SDF.
@@ -112,6 +125,16 @@ https://www.3dgep.com/category/graphics-programming/directx/directx-12/
 [Ray Marching and Signed Distance Functions](https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/#surface-normals-and-lighting)
 
 [SDF Generation for Mesh](https://airguanz.github.io/2021/06/28/sdf-gen.html)
+
+About radiance Cache, reference papers are: 
+
+[Radiance Caching for Efficient Global Illumination Computation, Jaroslav Kˇriv´anek, Pascal Gautron, Sumanta Pattanaik,Kadi Bouatouch](https://ieeexplore.ieee.org/abstract/document/1471692?casa_token=-TjDUZai2icAAAAA:nT32X7qk0BOrr6hBMzVPiMp3oA34z4GUbyvrYGjTRy7RzI59D3j_6CEz9LsVPpInolJqo-qgPA)
+
+[Fast, Arbitrary BRDF Shading for Low-Frequency Lighting Using Spherical Harmonics,Jan Kautz, Peter-Pike Sloan and John Snyder](https://www.ppsloan.org/publications/shbrdf_final17.pdf)
+
+[A Novel Hemispherical Basis for Accurate and Efficient Rendering,Pascal Gautron,Jaroslav Krivanek,Sumanta Pattanaik,Kadi Bouatouch](http://diglib.eg.org/bitstream/handle/10.2312/EGWR.EGSR04.321-330/321-330.pdf?sequence=1&isAllowed=y)
+
+[Radiance Cache Splatting: A GPU-Friendly Global Illumination Algorithm](http://www.cs.ucf.edu/~ceh/Publications/Papers/Rendering/EGSR05GautronEtAl.pdf)
 
 # Readme from Our Base Code
 
