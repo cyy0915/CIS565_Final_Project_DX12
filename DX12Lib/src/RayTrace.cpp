@@ -20,17 +20,16 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
     //rootParameters[RayTraceParm::camera].InitAsConstants(sizeof(CameraDataGPU) / 4, 0);
     rootParameters[RayTraceParm::camera].InitAsConstantBufferView(0);
     rootParameters[RayTraceParm::SDFParm].InitAsConstants(sizeof(SDFGPU) / 4, 1);
-    rootParameters[RayTraceParm::geomsNum].InitAsConstants(1, 2);
-    rootParameters[RayTraceParm::randNum].InitAsConstants(1, 3);
-    rootParameters[RayTraceParm::iterNum].InitAsConstants(1, 4);
+    rootParameters[RayTraceParm::renderParm].InitAsConstants(sizeof(RenderParm) / 4, 2);
 
-    rootParameters[RayTraceParm::geoms].InitAsShaderResourceView(RayTraceRegisterT::geoms);
     rootParameters[RayTraceParm::SDFGrids].InitAsShaderResourceView(RayTraceRegisterT::sdf);
     //Radiance Cache
     rootParameters[RayTraceParm::RadianceCacheParam].InitAsUnorderedAccessView( 1);
 
     rootParameters[RayTraceParm::materials].InitAsShaderResourceView(RayTraceRegisterT::materials);
     rootParameters[RayTraceParm::gbuffers].InitAsDescriptorTable(1, &texturesSRV);
+
+    rootParameters[RayTraceParm::bvh].InitAsShaderResourceView( RayTraceRegisterT::bvh );
     rootParameters[RayTraceParm::result].InitAsDescriptorTable(1, &resultUAV);
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(RayTraceParm::NumRootParameters, rootParameters);
     m_RootSignature = device->CreateRootSignature(rootSignatureDesc.Desc_1_1);
@@ -51,43 +50,35 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
     m_ResultTexture = device->CreateTexture(colorDesc);
 }
 
-//void RayTrace::resize(int w, int h) {
-//    m_Width = w;
-//    m_Height = h;
-//
-//    m_ResultTexture->Resize(w, h);
-//}
+void RayTrace::resize(int w, int h) {
+    m_Width = w;
+    m_Height = h;
+    m_change = true;
+    m_ResultTexture->Resize(w, h);
+}
 
-void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, std::vector<Material1> mats, CameraDataGPU camera, 
-    SDF sdfParm, std::vector<Geom> geoms, std::shared_ptr<StructuredBuffer> sdfGrids,
-    std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color,std::shared_ptr<StructuredBuffer> radianceCache) {
+void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU camera, bool change, 
+    int depth, bool useSDF, glm::vec3 lightDir, bool screenTracing,
+    SDF sdfParm, std::shared_ptr<StructuredBuffer> sdfGrids,
+    std::shared_ptr<Texture> normal, std::shared_ptr<Texture> depthMatid, std::shared_ptr<Texture> color, std::shared_ptr<StructuredBuffer> bvh) {
+    change = change || m_change;
+    m_change = false;
+    if (change) {
+        m_iter = 0;
+    }
     m_iter++;
     commandList->SetPipelineState(m_PipelineState);
     commandList->SetComputeRootSignature(m_RootSignature);
     commandList->SetComputeDynamicConstantBuffer(RayTraceParm::camera, camera);
     commandList->SetCompute32BitConstants(RayTraceParm::SDFParm, sdfParm.getGPUData());
-    int geomNum = geoms.size();
-    commandList->SetCompute32BitConstants(RayTraceParm::geomsNum, geomNum);
-    float randomNum = rand() / (float)RAND_MAX;
-    commandList->SetCompute32BitConstants(RayTraceParm::randNum, randomNum);
-    commandList->SetCompute32BitConstants(RayTraceParm::iterNum, m_iter);
-    std::vector<GeomGPU> geomsGPU;
-    for (auto g : geoms) {
-        geomsGPU.push_back(g.getGPUData());
-    }
-    commandList->SetComputeDynamicStructuredBuffer(RayTraceParm::geoms, geomsGPU);
+    commandList->SetCompute32BitConstants(RayTraceParm::renderParm, RenderParm({m_iter, change, depth, useSDF, lightDir, screenTracing}));
+
     commandList->SetShaderResourceView(RayTraceParm::SDFGrids, sdfGrids);
-    //Radiance Cache
-
-
-    std::vector<MaterialGPU> matsData;
-    for (auto m : mats) {
-        matsData.push_back(m.getGPUData());
-    }
-    commandList->SetComputeDynamicStructuredBuffer(RayTraceParm::materials, matsData);
+    
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 0, normal);
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 1, depthMatid);
     commandList->SetShaderResourceView(RayTraceParm::gbuffers, 2, color);
+    commandList->SetShaderResourceView( RayTraceParm::bvh, bvh );
 
     commandList->SetUnorderedAccessView(RayTraceParm::result, 0, m_ResultTexture, 0);
     commandList->SetUnorderedAccessView(RayTraceParm::RadianceCacheParam, radianceCache);

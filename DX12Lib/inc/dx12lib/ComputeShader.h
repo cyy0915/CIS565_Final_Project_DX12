@@ -80,6 +80,7 @@ namespace dx12lib
         }
 
         SDF m_sdfParm;
+        std::shared_ptr<StructuredBuffer> m_bvhResource;
 
     private:
         std::shared_ptr<RootSignature>       m_RootSignature;

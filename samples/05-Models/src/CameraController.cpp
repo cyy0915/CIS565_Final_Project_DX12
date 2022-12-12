@@ -154,10 +154,18 @@ void CameraController::Update( UpdateEventArgs& e )
 
     m_Yaw += yaw;
 
+    //check if the view is changed
+    float ep = 0.001;
+    if (abs(X) < ep && abs(Y) < ep && abs(Z) < ep && abs(pitch) < ep && abs(yaw) < ep && abs(zoom) < ep) {
+        m_Camera.m_hasChange = false;
+    }
+    else {
+        m_Camera.m_hasChange = true;
+    }
+
     // Apply translation and rotation to the camera.
     XMVECTORF32 focalPoint = { X, Y, Z };
-    m_Camera.MoveFocalPoint( focalPoint, Space::Local );
-
+    m_Camera.MoveFocalPoint(focalPoint, Space::Local);
     m_Zoom += zoom;
     m_Zoom = std::max( 0.0f, m_Zoom );
     XMVECTORF32 translation = { 0, 0, -m_Zoom };

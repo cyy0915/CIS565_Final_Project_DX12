@@ -105,6 +105,9 @@ public:
     dx12lib::CameraDataGPU getGPUData(int width, int height) {
         dx12lib::CameraDataGPU r;
         r.cameraToWorld = get_InverseViewMatrix();
+        DirectX::XMFLOAT4 o1( 0, 0, 0, 1 );
+        XMVECTOR          o = XMLoadFloat4( &o1 );
+        auto              p = XMVector4Transform( o, r.cameraToWorld );
         r.position = r.cameraToWorld.r[3];
         r.projection = get_ProjectionMatrix();
         r.resolution = DirectX::XMFLOAT2(width, height);
@@ -112,6 +115,8 @@ public:
         r.pixelLength = { pl, pl };
         return r;
     }
+
+    bool m_hasChange = true;
 
 protected:
     virtual void UpdateViewMatrix() const;

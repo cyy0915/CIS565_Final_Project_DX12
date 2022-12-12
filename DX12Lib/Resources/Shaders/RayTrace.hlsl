@@ -46,23 +46,6 @@ struct SDF
     int pad3;
 };
 
-struct Geom
-{
-    int materialid;
-    float3 translation;
-        //
-    float3 rotation;
-    int faceStartIdx; // use with array of Triangle
-        //
-    float3 scale;
-    int faceNum;
-        //
-    float4x4 transform;
-    float4x4 inverseTransform;
-    float4x4 invTranspose;
-    int4 type;
-};
-
 struct Camera
 {
     float4 position;
@@ -72,17 +55,33 @@ struct Camera
     matrix projection;
 };
 
-struct Material {
-    float3 color;
-    float exponent;
+struct BVHNode
+{
+    float3 minCorner;
+    int idx;
         //
-    float3 specularColor;
-    float hasReflective;
+    float3 maxCorner;
+    int isLeaf;
         //
-    float hasRefractive;
-    float indexOfRefraction;
-    float emittance;
-    float padding;
+    float3 point1;
+    int hasFace;
+        //
+    float3 point2;
+    int matId;
+        //
+    float3 point3;
+    float pad1;
+    //
+    float4 normal1;
+    float2 texCoord1;
+    float2 texCoord2;
+    //
+    float2 texCoord3;
+    float2 pad2;
+    //
+    float4 triangleMinCorner;
+    float4 triangleMaxCorner;
+    float4 center;
 };
 
 struct Ray
@@ -105,31 +104,29 @@ struct Intersection
     float3 color;
     float3 inputRadiance;
 };
-struct gSize
+struct RenderParm
 {
-    int size;
-};
-struct RandNum
-{
-    float n;
+    int iter;
+    int change;
+    int depth;
+    int useSDF;
+        //
+    float3 lightDir;
+    int screenTracing;
 };
 
 ConstantBuffer<Camera> camera : register(b0);
 ConstantBuffer<SDF> sdf : register(b1);
-ConstantBuffer<gSize> geomNum : register(b2);
-ConstantBuffer<RandNum> randomNum : register(b3);
-ConstantBuffer<gSize> iter : register(b4);
-//Radiance Cache
+ConstantBuffer<RenderParm> renderParm : register(b2);
 
 
 StructuredBuffer<SDFGrid> SDFGrids : register(t0);
-StructuredBuffer<Material> mats : register(t1);
-StructuredBuffer<Geom> geoms : register(t2);
+StructuredBuffer<BVHNode> bvhNodes : register(t1);
 
 //gbuffers
-Texture2D<float4> normalTexture : register(t3);
-Texture2D<float4> depthMatTexture : register(t4);
-Texture2D<float4> colorTexture : register(t5);
+Texture2D<float4> normalTexture : register(t2);
+Texture2D<float4> depthMatTexture : register(t3);
+Texture2D<float4> colorTexture : register(t4);
 
 RWTexture2D<float4> outTexture : register(u0);
 RWStructuredBuffer<RadianceCache> radianceCache : register(u1);
@@ -275,7 +272,7 @@ float sdfIntersectionTest(in Ray r, out float3 intersectionPoint, out float3 nor
 
     normal = float3(0.f, 0.f, 0.f);
     //normal = estimateNormal(r.origin, sdf, SDFGrids);
-    float t = sdf.gridExtent.x * 1.8f;
+    float t = 0.3f;
     int maxMarchSteps = 64;
     float3 lastRayMarchPos = r.origin;
     for (int i = 0; i < maxMarchSteps; i++)
@@ -488,7 +485,7 @@ void main(ComputeShaderInput IN)
 {
     float3 skyColor = float3(135, 206, 235) / 255.f;
     //float3 skyColor = float3(0, 0, 0);
-    float3 lightDir = normalize(float3(0, -3, 1));
+    float3 lightDir = normalize(renderParm.lightDir);
     float3 lightColor = float3(10, 10, 10);
     
     int x = IN.DispatchThreadID.x;
@@ -499,47 +496,45 @@ void main(ComputeShaderInput IN)
         return;
     }
     //generate random seed;
-    seed = uint2(iter.size, iter.size + 1) * uint2(xy);
+    seed = uint2(renderParm.iter, renderParm.iter + 1) * uint2(xy);
+    
     Ray ray;
     generateRayFromCamera(x, y, ray);
-    ray.ss = true;
-    //precompute
-    #if USE_RADIANCE_CACHE
-    //cache first point
+    ray.ss = renderParm.screenTracing;
+    
+    int maxDepth = renderParm.depth + 1;
+    for (int depth = 0; depth < maxDepth; depth++)
+    {
         Intersection isect;
         intersect(ray, isect);
-        RadianceCache tempCache;
-        if (isect.hit)
+        if (!isect.hit)
         {
-            precomputeRadianceCache(ray, isect, isect.normal, tempCache);
+            if (dot(ray.dir, -lightDir) > 0.99)
+            {
+                ray.color *= lightColor;
+            }
+            else
+            {
+                ray.color *= skyColor;
+            }
+            break;
         }
-        int cacheID = x * y;
-        radianceCache[cacheID] = tempCache;
-#endif
-        for (int depth = 0; depth < 5; depth++)
+        else if (ray.direct)
         {
-            Intersection isect;
-            intersect(ray, isect);
-            if (!isect.hit)
-            {
-                if (dot(ray.dir, -lightDir) > 0.99)
-                {
-                    ray.color *= lightColor;
-                }
-                else
-                {
-                    ray.color *= skyColor;
-                }
-                break;
-            }
-            else if (ray.direct)
-            {
-                ray.color = float3(0, 0, 0);
-                break;
-            }
+            ray.color = float3(0, 0, 0);
+            break;
+        }
         
-            float3 pos = ray.origin + ray.dir * isect.t;
-            float pdf = 1;
+        float3 pos;
+        if (depth == 0)
+        {
+            pos = mul(camera.cameraToWorld, depthMatTexture[xy]);
+        }
+        else
+        {
+            pos = ray.origin + ray.dir * isect.t;
+        }
+        float pdf = 1;
         
         //MIS, assume parallel light
             if (dot(isect.normal, lightDir) > 0)
@@ -567,30 +562,28 @@ void main(ComputeShaderInput IN)
                 }
             }
         
-            if (pdf < EPSILON)
-            {
-                ray.color = float3(0, 0, 0);
-                break;
-            }
-            else
-            {
-            #if USE_RADIANCE_CACHE
-            float3 isectPoint = pos;
-            ComputePointRadianceWeight(isectPoint, isect);
-            float3 debug = float3(1, 1, 1);
-            //ray.color =  isect.inputRadiance;
-            ray.color = debug * ray.color * isect.color * dot(isect.normal, ray.dir) / pdf;
-            #else
-            ray.color = ray.color * isect.color * dot(isect.normal, ray.dir) / pdf;
-           #endif
+        if (pdf < EPSILON)
+        {
+            ray.color = float3(0, 0, 0);
+            break;
+        }
+        else
+        {
+            ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
         }
         
-            if (depth == 4)
-            {
-                ray.color = float3(0, 0, 0);
-            }
+        if (depth == maxDepth - 1)
+        {
+            ray.color = float3(0, 0, 0);
         }
-    outTexture[xy] = float4(ray.color, 1);
+    }
+    //outTexture[xy] = float4(ray.color, 1);
+    if (renderParm.change)
+    {
+        outTexture[xy] = float4(0, 0, 0, 1);
+
+    }
+    outTexture[xy] = (outTexture[xy] * (renderParm.iter - 1) + float4(ray.color, 1)) / float(renderParm.iter);
     
     /*float4 pixelColor = normalTexture[1][xy];
     float z = pixelColor.x;
