@@ -46,6 +46,8 @@ namespace dx12lib
             gbuffers,
             bvh,
             result,
+            //RadianceCache param
+            RadianceCacheParam,
             NumRootParameters
         };
     }
@@ -88,6 +90,9 @@ namespace dx12lib
         std::shared_ptr<RootSignature>       m_RootSignature;
         std::shared_ptr<PipelineStateObject> m_PipelineState;
         std::shared_ptr<Texture> m_ResultTexture;
+        // structureBuffer
+        std::shared_ptr<StructuredBuffer> m_radianceCacheBuffer;
+
         int m_Width, m_Height;
         int m_iter = 0;
         bool m_change = true;
