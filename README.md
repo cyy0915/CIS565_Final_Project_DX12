@@ -100,6 +100,9 @@ http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html
 https://docs.unrealengine.com/5.0/en-US/lumen-technical-details-in-unreal-engine/
 https://www.3dgep.com/category/graphics-programming/directx/directx-12/
 
+[Ray Marching and Signed Distance Functions](https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/#surface-normals-and-lighting)
+
+[SDF Generation for Mesh](https://airguanz.github.io/2021/06/28/sdf-gen.html)
 
 # Readme from Our Base Code
 
