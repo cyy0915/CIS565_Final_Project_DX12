@@ -23,13 +23,17 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
     rootParameters[RayTraceParm::renderParm].InitAsConstants(sizeof(RenderParm) / 4, 2);
 
     rootParameters[RayTraceParm::SDFGrids].InitAsShaderResourceView(RayTraceRegisterT::sdf);
+    //Radiance Cache
+    rootParameters[RayTraceParm::RadianceCacheParam].InitAsUnorderedAccessView( 1);
+
+    rootParameters[RayTraceParm::materials].InitAsShaderResourceView(RayTraceRegisterT::materials);
     rootParameters[RayTraceParm::gbuffers].InitAsDescriptorTable(1, &texturesSRV);
 
     rootParameters[RayTraceParm::bvh].InitAsShaderResourceView( RayTraceRegisterT::bvh );
     rootParameters[RayTraceParm::result].InitAsDescriptorTable(1, &resultUAV);
     CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc(RayTraceParm::NumRootParameters, rootParameters);
     m_RootSignature = device->CreateRootSignature(rootSignatureDesc.Desc_1_1);
-
+   //
     // Create the PSO
     struct PipelineStateStream
     {
@@ -42,7 +46,7 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
 
     //Create result texture 
     auto colorDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R16G16B16A16_FLOAT, m_Width, m_Height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-    
+    m_radianceCacheBuffer = device->CreateStructuredBuffer(m_Width*m_Height,sizeof(radianceCache));
     m_ResultTexture = device->CreateTexture(colorDesc);
 }
 
@@ -65,7 +69,6 @@ void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU 
     m_iter++;
     commandList->SetPipelineState(m_PipelineState);
     commandList->SetComputeRootSignature(m_RootSignature);
-
     commandList->SetComputeDynamicConstantBuffer(RayTraceParm::camera, camera);
     commandList->SetCompute32BitConstants(RayTraceParm::SDFParm, sdfParm.getGPUData());
     commandList->SetCompute32BitConstants(RayTraceParm::renderParm, RenderParm({m_iter, change, depth, useSDF, lightDir, screenTracing}));
@@ -78,6 +81,7 @@ void RayTrace::dispatch(std::shared_ptr<CommandList> commandList, CameraDataGPU 
     commandList->SetShaderResourceView( RayTraceParm::bvh, bvh );
 
     commandList->SetUnorderedAccessView(RayTraceParm::result, 0, m_ResultTexture, 0);
+    commandList->SetUnorderedAccessView(RayTraceParm::RadianceCacheParam, radianceCache);
 
     commandList->Dispatch(Math::DivideByMultiple(m_Width, 8), Math::DivideByMultiple(m_Height, 8));
 }

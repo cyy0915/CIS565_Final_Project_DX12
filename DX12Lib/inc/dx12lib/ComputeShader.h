@@ -67,6 +67,7 @@ namespace dx12lib
             return m_PipelineState;
         }
 
+
         //进行一次compute shader的计算
         void dispatch(CommandQueue& commandQueue, BVHTree& bvhTree, std::vector<std::shared_ptr<Material>> mats);
 
