@@ -102,7 +102,6 @@ struct Intersection
     int materiaId;
     float3 normal;
     float3 color;
-    float3 inputRadiance;
 };
 struct RenderParm
 {
@@ -453,7 +452,8 @@ void precomputeRadianceCache(
 
 void ComputePointRadianceWeight(
     float3 isectPoint, 
-    Intersection isect
+    Intersection isect,
+    out float3 radiance 
     )
 {
     //This is already in GPU
@@ -463,10 +463,10 @@ void ComputePointRadianceWeight(
     int nearestCacheIndex = 0;
 
     int cacheSize = camera.resolution.x * camera.resolution.y;
-    //float secondNearestDistance = FLT_MAX;
-    //float secondNearestPointRadiance;
-    //float3 secondNearestPointPos;
-    //int secondNearestCacheIndex = 0;
+    float secondNearestDistance = FLT_MAX;
+    float secondNearestPointRadiance;
+    float3 secondNearestPointPos;
+    int secondNearestCacheIndex = 0;
 
     for (int i = 0; i < cacheSize; i++)
     {
@@ -475,7 +475,7 @@ void ComputePointRadianceWeight(
         //find nearest 5 highest weight point
         if (distance < nearestDistance)
         {
-            //secondNearestDistance = nearestDistance;
+            secondNearestDistance = nearestDistance;
                 //p-pi
             nearestDistance = distance;
             nearestPointPos = radianceCache[i].cachePoint;
@@ -489,20 +489,20 @@ void ComputePointRadianceWeight(
         //}
     }
     
-    //float distance_1 = length(isectPoint - nearestPointPos);
-    //float distance_2 = length(isectPoint - secondNearestPointPos);
-    //float weight_1 = 1.f / (distance_1 * distance_1);
-    //float weight_2 = 1.f / (distance_2 * distance_2);
+    float distance_1 = length(isectPoint - nearestPointPos);
+    float distance_2 = length(isectPoint - secondNearestPointPos);
+    float weight_1 = 1.f / (distance_1 * distance_1);
+    float weight_2 = 1.f / (distance_2 * distance_2);
     
     float3 radiance_1 = radianceCache[nearestCacheIndex].cachedRadiance;
-    //float3 radiance_2 = radianceCache[secondNearestCacheIndex].cachedRadiance;
+    float3 radiance_2 = radianceCache[secondNearestCacheIndex].cachedRadiance;
     
-    //float sum = weight_1 + weight_2;
-    //weight_1 = weight_1 / sum;
-    //weight_2 = weight_2 / sum;
+    float sum = weight_1 + weight_2;
+    weight_1 = weight_1 / sum;
+    weight_2 = weight_2 / sum;
     
-    //isect.inputRadiance = radiance_1 * weight_1 + radiance_2 * weight_2;
-    isect.inputRadiance = radiance_1;
+    radiance = radiance_1 * weight_1 + radiance_2 * weight_2;
+   // isect.inputRadiance = radiance_1;
  //   isect.inputRadiance = float3(1, 1, 1);
 
 }
@@ -609,10 +609,11 @@ void main(ComputeShaderInput IN)
         else
         {
             #if USE_RADIANCE_CACHE
-            
-            ComputePointRadianceWeight(pos, isect);
-           // ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
-            ray.color = isect.inputRadiance;
+            float3 radiance = float3(1, 1, 1);
+            float3 debugCol = float3(1, 1, 1);
+            ComputePointRadianceWeight(pos, isect,radiance);
+           ray.color =debugCol* ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
+          //  ray.color = radiance;
             #endif
             
             ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
