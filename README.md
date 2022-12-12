@@ -117,6 +117,16 @@ https://www.3dgep.com/category/graphics-programming/directx/directx-12/
 
 [SDF Generation for Mesh](https://airguanz.github.io/2021/06/28/sdf-gen.html)
 
+About radiance Cache, reference papers are: 
+
+[Radiance Caching for Efficient Global Illumination Computation, Jaroslav Kˇriv´anek, Pascal Gautron, Sumanta Pattanaik,Kadi Bouatouch](https://ieeexplore.ieee.org/abstract/document/1471692?casa_token=-TjDUZai2icAAAAA:nT32X7qk0BOrr6hBMzVPiMp3oA34z4GUbyvrYGjTRy7RzI59D3j_6CEz9LsVPpInolJqo-qgPA)
+
+[Fast, Arbitrary BRDF Shading for Low-Frequency Lighting Using Spherical Harmonics,Jan Kautz, Peter-Pike Sloan and John Snyder](https://www.ppsloan.org/publications/shbrdf_final17.pdf)
+
+[A Novel Hemispherical Basis for Accurate and Efficient Rendering,Pascal Gautron,Jaroslav Krivanek,Sumanta Pattanaik,Kadi Bouatouch](http://diglib.eg.org/bitstream/handle/10.2312/EGWR.EGSR04.321-330/321-330.pdf?sequence=1&isAllowed=y)
+
+[Radiance Cache Splatting: A GPU-Friendly Global Illumination Algorithm](http://www.cs.ucf.edu/~ceh/Publications/Papers/Rendering/EGSR05GautronEtAl.pdf)
+
 # Readme from Our Base Code
 
 This repository is intended to be used as a code repository for learning DirectX 12. The tutorials can be found on https://www.3dgep.com
