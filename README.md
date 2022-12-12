@@ -118,9 +118,12 @@ It's worth noticing that the FPS suddenly drops a lot when the resolution is 500
 
 
 # Reference
-http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html
-https://docs.unrealengine.com/5.0/en-US/lumen-technical-details-in-unreal-engine/
-https://www.3dgep.com/category/graphics-programming/directx/directx-12/
+[Screen Space Ray Tracing](http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html)
+
+[Lumen Techniques](
+https://docs.unrealengine.com/5.0/en-US/lumen-technical-details-in-unreal-engine/)
+
+[DirectX-12 Tutorial](https://www.3dgep.com/category/graphics-programming/directx/directx-12/)
 
 [Ray Marching and Signed Distance Functions](https://jamie-wong.com/2016/07/15/ray-marching-signed-distance-functions/#surface-normals-and-lighting)
 
