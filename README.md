@@ -1,6 +1,8 @@
 # Overview
 This is a GPU based software ray tracer implemented with DirectX 12 and C++. The project focus on improving performance of the path tracer using screen space tracing, ray marching with SDF, and radiance cache. The `software` means we didn't use DXR API, instead did most part of jobs in compute shaders.
 
+Our [slides](https://docs.google.com/presentation/d/1KqtTNHKcfJJmezH87nCHo02NYfXkfuNJ8oHE3m2dz4k/edit#slide=id.g1b267a0d5b1_1_1)
+
 ![](img/overview1.png)
 ![](img/overview2.png)
 
