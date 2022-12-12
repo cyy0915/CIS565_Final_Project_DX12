@@ -44,7 +44,7 @@ RayTrace::RayTrace(std::shared_ptr<Device> device, int width, int height) : m_Wi
 
     //Create result texture 
     auto colorDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R16G16B16A16_FLOAT, m_Width, m_Height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-    m_radianceCacheBuffer = device->CreateStructuredBuffer(m_Width*m_Height,sizeof(radianceCache));
+    m_radianceCacheBuffer = device->CreateStructuredBuffer(m_Width*m_Height,32);
     m_ResultTexture = device->CreateTexture(colorDesc);
 }
 

@@ -191,16 +191,14 @@ namespace dx12lib
     {
         glm::vec3 radianceCache;
         glm::vec3 cachePoint;  // this is in world space
-        int       radianceCacheSize;
     };
     struct radianceCache
     {
         glm::vec3 radianceCache;
         glm::vec3 cachePoint; // this is in world space
-        int radianceCacheSize;
         radianceCacheGPU initRadianceCache() 
         {
-            return radianceCacheGPU( { glm::vec3( 0, 0, 0 ), glm::vec3( 0, 0, 0 ),0 } );
+            return radianceCacheGPU( { glm::vec3( 0, 0, 0 ), glm::vec3( 0, 0, 0 ) } );
         }
     };
 

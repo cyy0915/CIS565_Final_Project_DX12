@@ -10,6 +10,26 @@
 
 #define SAMPLE_COUNT 100
 #define USE_RADIANCE_CACHE 1
+//Hemisphere Harmonic Coefficient
+//reference: 
+//(0,0)
+#define HSH_COEFFICIENT_0 0.398942280f
+//(-1,1)
+#define HSH_COEFFICIENT_1 0.488602512f
+//(0,1)
+#define HSH_COEFFICIENT_2 0.690988299f
+//(1,1)
+#define HSH_COEFFICIENT_3 0.488602512f
+//(-2,2)
+#define HSH_COEFFICIENT_4 0.182091405f
+//(-1,2)
+#define HSH_COEFFICIENT_5 0.364182810f
+//(0,2)
+#define HSH_COEFFICIENT_6 0.892062058f
+//(1,2)
+#define HSH_COEFFICIENT_7 0.364182810f
+//(2,2)
+#define HSH_COEFFICIENT_8 0.182091405f
 
 
 struct ComputeShaderInput
@@ -420,6 +440,7 @@ void precomputeRadianceCache(
             radianceCache.cachedRadiance += newIsect.color / SAMPLE_COUNT;
         }
     }
+    //radianceCache.cachedRadiance = float3(1, 1, 1);
     radianceCache.cachePoint = pos;
 }
 
@@ -434,6 +455,7 @@ void ComputePointRadianceWeight(
     float3 nearestPointPos;
     int nearestCacheIndex = 0;
 
+    isect.inputRadiance = float3(0, 0, 0);
     int cacheSize = camera.resolution.x * camera.resolution.y;
     //float secondNearestDistance = FLT_MAX;
     //float secondNearestPointRadiance;
@@ -467,15 +489,15 @@ void ComputePointRadianceWeight(
     //float weight_2 = 1.f / (distance_2 * distance_2);
     
     float3 radiance_1 = radianceCache[nearestCacheIndex].cachedRadiance;
-    //float3 radiance_2 = radianceCache[secondNearestCacheIndex].cachedRadiance;
+   // float3 radiance_2 = radianceCache[secondNearestCacheIndex].cachedRadiance;
     
     //float sum = weight_1 + weight_2;
     //weight_1 = weight_1 / sum;
     //weight_2 = weight_2 / sum;
     
-    //isect.inputRadiance = radiance_1 * weight_1 + radiance_2 * weight_2;
-    isect.inputRadiance = radiance_1;
- //   isect.inputRadiance = float3(1, 1, 1);
+  //  isect.inputRadiance = radiance_1 * weight_1 + radiance_2 * weight_2;
+    //isect.inputRadiance = radiance_1;
+    isect.inputRadiance = float3(1, 1, 0);
 
 }
 
@@ -507,7 +529,7 @@ void main(ComputeShaderInput IN)
     {
 #if USE_RADIANCE_CACHE
         int cacheIdx = x * y;
-        if (depth == 1)
+        if (depth == 0)
         {
             Intersection newIntersect;
             intersect(ray, newIntersect);
@@ -586,9 +608,10 @@ void main(ComputeShaderInput IN)
         else
         {
             #if USE_RADIANCE_CACHE
-            
+            float3 debugCol = float3(1, 1, 1);
+            float3 pos = ray.origin + ray.dir * isect.t;
             ComputePointRadianceWeight(pos, isect);
-           // ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
+           //ray.color = debugCol*ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
             ray.color = isect.inputRadiance;
             #endif
             
