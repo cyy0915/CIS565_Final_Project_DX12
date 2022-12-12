@@ -56,20 +56,33 @@ Ray marching with low resolution SDF voxels (run on DirectX 12 path tracer)
 
 ### `Radiance Cache`
 
-The current image below is buggy....
+![](img/pipeline_rc.jpg)
 
-![](img/sdf/Buggy_cache.png)
+The basic idea of radiance cache is to precompute part of point's incoming radiance, and use Hemisphere Sperical Harmonic function to encode them.
 
-The basic idea of radiance cache is to precompute part of point's incoming radiance, and use Hemisphere Harmonic to represent them.
+After getting cached points, when doing ray marching in SDF and getting intersections, for each intersection need to check the cache list to find the nearest point, and then compute it's translational ingradient value to interpolate between these two points.
 
-After precompute radiance cache, when doing path tracing and get intersection, first find the nearest radiance cache point, then use interpolation to calculate this point's diffuse radiance.
-
-But to successfully interpolate, need to compute the HSH coefficient's partial derivatives.
-
-HSH Coefficient compute    |  Ray Tracing  (4 FPS)
+Hemisphere Spherical Harmonic Function |  Derivative Computation Formula
 :-------------------------:|:-------------------------:
-![](img/sdf/HSH_1.png)        |  ![](img/sdf/HSH_2.png)
+![](img/sdf/HSH_1.png)       | ![](img/sdf/HSH_2.png)
 
+Then after having these values it will be possible to get the interpolated radiance value by using these formulas:
+
+<div style="text-align: center">
+<img src='img/formula.png'/>
+</div>
+
+after computing x direction, you also need to compute y direction. The formula picture express is as followed:
+
+<div style="text-align: center">
+<img src='img/derivatives.png'/>
+</div>
+
+Though the implement has been finished and looked right, but in real test, we find out that this computation is too heavy because every intersection need to check whether this point has been cached or having near cached point, the computation complexity is very high, and instead of acclerating, it will slow down the whole process greatly, perhaps we made something wrong and need further studying.
+
+Render with Radiance Cache| Pure Radiance Cache
+:-------------------------:|:--------------------:
+![](img/radianceCache.png) | ![](img/cache.png)
 
 # Performance Analysis
 
