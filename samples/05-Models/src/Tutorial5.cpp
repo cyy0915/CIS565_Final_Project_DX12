@@ -505,7 +505,7 @@ void Tutorial5::OnRender()
             m_Depth, m_UseSDF, m_LightDir, m_ScreenTracing,
             m_SDFComputeShader->m_sdfParm, m_SDFComputeShader->GetResult(),
             m_RenderTarget.GetTexture( AttachmentPoint::Color0 ), m_RenderTarget.GetTexture( AttachmentPoint::Color1 ),
-            m_RenderTarget.GetTexture( AttachmentPoint::Color2 ), m_SDFComputeShader->m_bvhResource);
+            m_RenderTarget.GetTexture( AttachmentPoint::Color2 ), m_SDFComputeShader->m_bvhResource,m_RayTraceComputeShader->GetRadianceBuffer());
 
         auto swapChainBackBuffer = m_SwapChain->GetRenderTarget().GetTexture( AttachmentPoint::Color0 );
         //commandList->ResolveSubresource( swapChainBackBuffer, msaaRenderTarget );

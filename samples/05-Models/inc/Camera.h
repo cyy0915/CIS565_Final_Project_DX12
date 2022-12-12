@@ -111,7 +111,7 @@ public:
         r.position = r.cameraToWorld.r[3];
         r.projection = get_ProjectionMatrix();
         r.resolution = DirectX::XMFLOAT2(width, height);
-        float pl = tan(m_vFoV / 2.f) / (float)height * 2.f;
+        float pl = tan(glm::radians(m_vFoV / 2.f)) / (float)height * 2.f;
         r.pixelLength = { pl, pl };
         return r;
     }

@@ -7,6 +7,11 @@
 #define EPSILON           0.00001f
 #define INV_PI           0.31830988618379067
 
+
+#define SAMPLE_COUNT 100
+#define USE_RADIANCE_CACHE 0
+
+
 struct ComputeShaderInput
 {
     uint3 GroupID : SV_GroupID; // 3D index of the thread group in the dispatch.
@@ -19,6 +24,14 @@ struct SDFGrid
 {
     float dist;
     float3 color;
+};
+
+//Radiance Cache
+
+struct RadianceCache
+{
+    float3 cachePoint;
+    float3 cachedRadiance;
 };
 
 struct SDF
@@ -89,6 +102,7 @@ struct Intersection
     int materiaId;
     float3 normal;
     float3 color;
+    float3 inputRadiance;
 };
 struct RenderParm
 {
@@ -105,6 +119,7 @@ ConstantBuffer<Camera> camera : register(b0);
 ConstantBuffer<SDF> sdf : register(b1);
 ConstantBuffer<RenderParm> renderParm : register(b2);
 
+
 StructuredBuffer<SDFGrid> SDFGrids : register(t0);
 StructuredBuffer<BVHNode> bvhNodes : register(t1);
 
@@ -114,6 +129,7 @@ Texture2D<float4> depthMatTexture : register(t3);
 Texture2D<float4> colorTexture : register(t4);
 
 RWTexture2D<float4> outTexture : register(u0);
+RWStructuredBuffer<RadianceCache> radianceCache : register(u1);
 
 // Linear clamp sampler.
 //SamplerState LinearClampSampler : register(s0);
@@ -256,7 +272,7 @@ float sdfIntersectionTest(in Ray r, out float3 intersectionPoint, out float3 nor
 
     normal = float3(0.f, 0.f, 0.f);
     //normal = estimateNormal(r.origin, sdf, SDFGrids);
-    float t = 0.3f;
+    float t = sdf.gridExtent.x * 1.8 * (1 + 2 * rng());
     int maxMarchSteps = 64;
     float3 lastRayMarchPos = r.origin;
     for (int i = 0; i < maxMarchSteps; i++)
@@ -279,11 +295,9 @@ float sdfIntersectionTest(in Ray r, out float3 intersectionPoint, out float3 nor
             color = SDFGrids[currSDFGrid].color;
             return t;
         }
-
         // Move along the view ray
         t += SDFGrids[currSDFGrid].dist;
         lastRayMarchPos = rayMarchPos;
-
     }
 
     return -1.f;
@@ -338,6 +352,34 @@ void intersect(in out Ray ray, out Intersection isect)
     }
 }
 
+void biasHitPos(in out float3 pos, in float3 normal)
+{
+    float3 directionNotNormal;
+    if (abs(normal.x) < SQRT_OF_ONE_THIRD)
+    {
+        directionNotNormal = float3(1, 0, 0);
+    }
+    else if (abs(normal.y) < SQRT_OF_ONE_THIRD)
+    {
+        directionNotNormal = float3(0, 1, 0);
+    }
+    else
+    {
+        directionNotNormal = float3(0, 0, 1);
+    }
+
+    // Use not-normal direction to generate two perpendicular directions
+    float3 perpendicularDirection1 =
+        normalize(cross(normal, directionNotNormal));
+    float3 perpendicularDirection2 =
+        normalize(cross(normal, perpendicularDirection1));
+    
+    float r = sqrt(rng()) * sdf.gridExtent.x * 0.5;
+    float theta = rng() * TWO_PI;
+    pos = pos + r * cos(theta) * perpendicularDirection1 + r * sin(theta) * perpendicularDirection2;
+
+}
+
 float3 calculateRandomDirectionInHemisphere(float3 normal, out float pdf)
 {
     float up = sqrt(rng()); // cos(theta)
@@ -375,6 +417,97 @@ float3 calculateRandomDirectionInHemisphere(float3 normal, out float pdf)
         + sin(around) * over * perpendicularDirection2;
 }
 
+void precomputeRadianceCache(
+    Ray ray,
+    Intersection insect,
+    float3 normal,
+    out RadianceCache radianceCache
+  )
+{
+    float factor = 2 * PI / SAMPLE_COUNT;
+    float3 pos = ray.origin + ray.dir * insect.t;
+    // generate n sample light
+    //N is SAMPLE_COUNT
+    for (int i = 0; i < SAMPLE_COUNT; i++)
+    {
+        //Turn it into sphere coordinates
+        //Get sample ray's intersection lighting results
+        float pdf = 0;
+
+        Ray newRay;
+        newRay.dir = calculateRandomDirectionInHemisphere(normal, pdf);
+        newRay.dir = normalize(newRay.dir);
+        //Get the generated rayDir's intersection BSDF cache
+        //newRay origin is intersection point
+        newRay.origin = ray.origin + ray.dir * insect.t;
+
+        Intersection newIsect;
+        intersect(newRay, newIsect);
+        if (newIsect.hit)
+        {
+            radianceCache.cachedRadiance += newIsect.color / SAMPLE_COUNT;
+        }
+    }
+    radianceCache.cachePoint = pos;
+}
+
+void ComputePointRadianceWeight(
+    float3 isectPoint, 
+    Intersection isect
+    )
+{
+    //This is already in GPU
+    float nearestDistance = FLT_MAX;
+    float nearestPointRadiance;
+    float3 nearestPointPos;
+    int nearestCacheIndex = 0;
+
+    int cacheSize = camera.resolution.x * camera.resolution.y;
+    //float secondNearestDistance = FLT_MAX;
+    //float secondNearestPointRadiance;
+    //float3 secondNearestPointPos;
+    //int secondNearestCacheIndex = 0;
+
+    for (int i = 0; i < cacheSize; i++)
+    {
+        //p-pi
+        float distance = length(i - radianceCache[i].cachePoint);
+        //find nearest 5 highest weight point
+        if (distance < nearestDistance)
+        {
+            //secondNearestDistance = nearestDistance;
+                //p-pi
+            nearestDistance = distance;
+            nearestPointPos = radianceCache[i].cachePoint;
+            nearestCacheIndex = i;
+        }
+        //else if (distance < secondNearestDistance)
+        //{
+        //    secondNearestDistance = distance;
+        //    secondNearestPointPos = radianceCache[i].cachePoint;
+        //    secondNearestCacheIndex = i;
+        //}
+    }
+    
+    //float distance_1 = length(isectPoint - nearestPointPos);
+    //float distance_2 = length(isectPoint - secondNearestPointPos);
+    //float weight_1 = 1.f / (distance_1 * distance_1);
+    //float weight_2 = 1.f / (distance_2 * distance_2);
+    
+    float3 radiance_1 = radianceCache[nearestCacheIndex].cachedRadiance;
+    //float3 radiance_2 = radianceCache[secondNearestCacheIndex].cachedRadiance;
+    
+    //float sum = weight_1 + weight_2;
+    //weight_1 = weight_1 / sum;
+    //weight_2 = weight_2 / sum;
+    
+    //isect.inputRadiance = radiance_1 * weight_1 + radiance_2 * weight_2;
+    isect.inputRadiance = radiance_1;
+ //   isect.inputRadiance = float3(1, 1, 1);
+
+}
+
+
 [numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
 void main(ComputeShaderInput IN)
 {
@@ -390,7 +523,6 @@ void main(ComputeShaderInput IN)
     {
         return;
     }
-    
     //generate random seed;
     seed = uint2(renderParm.iter, renderParm.iter + 1) * uint2(xy);
     
@@ -401,7 +533,23 @@ void main(ComputeShaderInput IN)
     int maxDepth = renderParm.depth + 1;
     for (int depth = 0; depth < maxDepth; depth++)
     {
-        Intersection isect;
+#if USE_RADIANCE_CACHE
+        int cacheIdx = x * y;
+        if (depth == 1)
+        {
+            Intersection newIntersect;
+            intersect(ray, newIntersect);
+            RadianceCache tempCache;
+            if (newIntersect.hit)
+            {
+                precomputeRadianceCache(ray, newIntersect,newIntersect.normal, tempCache);
+                radianceCache[cacheIdx] = tempCache;
+            }
+        }
+        
+#endif
+        
+            Intersection isect;
         intersect(ray, isect);
         if (!isect.hit)
         {
@@ -422,41 +570,36 @@ void main(ComputeShaderInput IN)
         }
         
         float3 pos;
-        if (depth == 0)
-        {
-            pos = mul(camera.cameraToWorld, depthMatTexture[xy]);
-        }
-        else
-        {
-            pos = ray.origin + ray.dir * isect.t;
-        }
-        float pdf = 1;
+        pos = ray.origin + ray.dir * isect.t;
+        biasHitPos(pos, isect.normal);
         
+        float pdf = 1;
+
         //MIS, assume parallel light
-        if (dot(isect.normal, lightDir) > 0)
-        {
-            float tmppdf;
-            ray.dir = calculateRandomDirectionInHemisphere(isect.normal, tmppdf);
-            ray.origin = pos + ray.dir * EPSILON;
-            pdf = tmppdf;
-        }
-        else
-        {
-            if (rng() < 0.5)
-            {
-                ray.dir = -lightDir;
-                ray.origin = pos + ray.dir * EPSILON;
-                ray.direct = true;
-                pdf = 0.5;
-            }
-            else
+            if (dot(isect.normal, lightDir) > 0)
             {
                 float tmppdf;
                 ray.dir = calculateRandomDirectionInHemisphere(isect.normal, tmppdf);
                 ray.origin = pos + ray.dir * EPSILON;
-                pdf = 0.5 * tmppdf;
+                pdf = tmppdf;
             }
-        }
+            else
+            {
+                if (rng() < 0.5)
+                {
+                    ray.dir = -lightDir;
+                    ray.origin = pos + ray.dir * EPSILON;
+                    ray.direct = true;
+                    pdf = 0.5;
+                }
+                else
+                {
+                    float tmppdf;
+                    ray.dir = calculateRandomDirectionInHemisphere(isect.normal, tmppdf);
+                    ray.origin = pos + ray.dir * EPSILON;
+                    pdf = 0.5 * tmppdf;
+                }
+            }
         
         if (pdf < EPSILON)
         {
@@ -465,6 +608,13 @@ void main(ComputeShaderInput IN)
         }
         else
         {
+            #if USE_RADIANCE_CACHE
+            
+            ComputePointRadianceWeight(pos, isect);
+           // ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
+            ray.color = isect.inputRadiance;
+            #endif
+            
             ray.color = ray.color * isect.color * max(dot(isect.normal, ray.dir), 0) / pdf;
         }
         
@@ -481,32 +631,5 @@ void main(ComputeShaderInput IN)
     }
     outTexture[xy] = (outTexture[xy] * (renderParm.iter - 1) + float4(ray.color, 1)) / float(renderParm.iter);
     
-    /*float4 pixelColor = normalTexture[1][xy];
-    float z = pixelColor.x;
-    float3 normal = normalTexture[0][xy].xyz;
-    float d = z / ray.dirVS.z;
-    float3 p = ray.dirVS * d;
-    //float3 newdir = normalize(ray.dirVS + 2 * normal);
-    float3 newdir = normalize(rng(xy / 1000.f + randomNum.n, z + randomNum.n));
-    int2 hitpixel;
-    float3 hitpoint;
-    bool hit = false;
-    float3 r = traceScreenSpace(p, newdir, 0.1, 1, 0.5, 400, hitpixel, hitpoint, hit);
-    
-    float4 currColor;
-    if (hit)
-    {
-        //outTexture[xy] = float4(1, 1, 1, 1);
-        currColor = normalTexture[2][xy] + normalTexture[2][hitpixel];
-    }
-    else
-    {
-        //outTexture[xy] = float4(0, 0, 0, 1);
-        currColor = normalTexture[2][xy];
-    }
-    outTexture[xy] = (outTexture[xy] * (iter.size - 1) + currColor) / float(iter.size);*/
-
-    //outTexture[xy] = colorTexture[xy];
-
 }
 

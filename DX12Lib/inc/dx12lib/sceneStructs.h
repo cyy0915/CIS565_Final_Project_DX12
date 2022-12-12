@@ -187,6 +187,23 @@ namespace dx12lib
         }
     };
 
+    struct radianceCacheGPU
+    {
+        glm::vec3 radianceCache;
+        glm::vec3 cachePoint;  // this is in world space
+        int       radianceCacheSize;
+    };
+    struct radianceCache
+    {
+        glm::vec3 radianceCache;
+        glm::vec3 cachePoint; // this is in world space
+        int radianceCacheSize;
+        radianceCacheGPU initRadianceCache() 
+        {
+            return radianceCacheGPU( { glm::vec3( 0, 0, 0 ), glm::vec3( 0, 0, 0 ),0 } );
+        }
+    };
+
     struct SDFGrid {
         float dist;
         glm::vec3 color;
