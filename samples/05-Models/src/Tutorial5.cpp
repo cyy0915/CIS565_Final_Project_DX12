@@ -723,9 +723,9 @@ void Tutorial5::OnGUI( const std::shared_ptr<CommandList>& commandList, const Re
         int depth = m_Depth;
         glm::vec3 lightDir = m_LightDir;
         ImGui::Checkbox("Screen Tracing", &m_ScreenTracing);
-        ImGui::RadioButton("SDF", &m_UseSDF, 1);
+        /*ImGui::RadioButton("SDF", &m_UseSDF, 1);
         ImGui::SameLine();
-        ImGui::RadioButton("BVH", &m_UseSDF, 0);
+        ImGui::RadioButton("BVH", &m_UseSDF, 0);*/
         ImGui::InputInt("Depth", &m_Depth);
         m_Depth = std::max(1, m_Depth);
         m_Depth = std::min(8, m_Depth);

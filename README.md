@@ -1,21 +1,37 @@
 # Overview
-This is a GPU based path tracer. The project focus on improving performance of the path tracer using screen space tracing, ray marching with SDF, and radiance cache.
+This is a GPU based software ray tracer implemented with DirectX 12 and C++. The project focus on improving performance of the path tracer using screen space tracing, ray marching with SDF, and radiance cache. The `software` means we didn't use DXR API, instead did most part of jobs in compute shaders.
 
 ![](img/overview1.png)
 ![](img/overview2.png)
 
+# Getting Started
+
+This project uses CMake (3.18.3 or newer) to generate the project and solution files.
+
+Assets for the samples can be downloaded using the [DownloadAssets.bat](DownloadAssets.bat) batch file located in the root folder of this project.
+
+The base code was from the tutorial on https://www.3dgep.com, then we modified and added codes based on it. We mainly added some compute shader pipeline in `DX12Lib`, and modified files in `samples/05-Models` to implement our pipeline. To build and open our program, set the `samples/05-Models` as startup project.
+
+
 # Pipeline
 ![](img/pipeline.png)
 
+### `Rasterize`
+The first part is rasterize, but instead of compute full lights, we only output some Gbuffers (normal, depth, mesh color), which will be used in `Screen Space Tracing`
+### `Screen Space Tracing`
+We use Gbuffers to first trace ray in screen space. If the ray is out of the screen space, the pipeline will fall back to `3D Ray Tracing`.
+### `3D Ray Tracing`
+It's actually ray marching based on SDF (Signed Distance Field). It's an important part to accelerate our path tracer.
+
 # Features
 ### `Screen Space Tracing`
+The SDF is based on voxels, so it's not very accurate, especially rendering mesh with textures. Therefore, we add screen tracing to deal with direct lighting and first few bounces. 
 
-Because ray marching with SDF is not very accurate, we add screen tracing to deal with direct lighting and first few bounces. And to get Gbuffers used in screen tracing, we also add a simple rasterizing pipeline
-
-Direct light  |  Direct light + 3 bounces with screen tracing
+Pure SDF scene  |  Add screen tracing
 :-------------------------:|:-------------------------:
-![](img/direct.png)        |  ![](img/direct%2Bscreen.png)
+![](img/ss/sdf.png)        |  ![](img/ss/ss.png)
 
+In detail, we use depth texture to do screen-space ray marching, and we use mipmap of depth texture to accelerate the process. Then we use normal texture to get normal on the hit point and sample the next direction. 
 
 ### `Ray Marching with SDF`
 The render results below is produced with our [experiment CUDA path tracer project](https://github.com/linlinbest/SDFPathTracer).
@@ -65,6 +81,12 @@ The reason of this result is that once the SDF voxels are generated with a fixed
 
 
 
+
+
+# Reference
+http://casual-effects.blogspot.com/2014/08/screen-space-ray-tracing.html
+https://docs.unrealengine.com/5.0/en-US/lumen-technical-details-in-unreal-engine/
+https://www.3dgep.com/category/graphics-programming/directx/directx-12/
 
 
 # Readme from Our Base Code
