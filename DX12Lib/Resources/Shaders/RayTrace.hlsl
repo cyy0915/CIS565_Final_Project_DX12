@@ -256,7 +256,7 @@ float sdfIntersectionTest(in Ray r, out float3 intersectionPoint, out float3 nor
 
     normal = float3(0.f, 0.f, 0.f);
     //normal = estimateNormal(r.origin, sdf, SDFGrids);
-    float t = 0.3f;
+    float t = sdf.gridExtent.x * 1.8 * (1 + 2 * rng());
     int maxMarchSteps = 64;
     float3 lastRayMarchPos = r.origin;
     for (int i = 0; i < maxMarchSteps; i++)
@@ -336,6 +336,34 @@ void intersect(in out Ray ray, out Intersection isect)
             isect.color = color;
         }
     }
+}
+
+void biasHitPos(in out float3 pos, in float3 normal)
+{
+    float3 directionNotNormal;
+    if (abs(normal.x) < SQRT_OF_ONE_THIRD)
+    {
+        directionNotNormal = float3(1, 0, 0);
+    }
+    else if (abs(normal.y) < SQRT_OF_ONE_THIRD)
+    {
+        directionNotNormal = float3(0, 1, 0);
+    }
+    else
+    {
+        directionNotNormal = float3(0, 0, 1);
+    }
+
+    // Use not-normal direction to generate two perpendicular directions
+    float3 perpendicularDirection1 =
+        normalize(cross(normal, directionNotNormal));
+    float3 perpendicularDirection2 =
+        normalize(cross(normal, perpendicularDirection1));
+    
+    float r = sqrt(rng()) * sdf.gridExtent.x * 0.5;
+    float theta = rng() * TWO_PI;
+    pos = pos + r * cos(theta) * perpendicularDirection1 + r * sin(theta) * perpendicularDirection2;
+
 }
 
 float3 calculateRandomDirectionInHemisphere(float3 normal, out float pdf)
@@ -422,14 +450,9 @@ void main(ComputeShaderInput IN)
         }
         
         float3 pos;
-        if (depth == 0)
-        {
-            pos = mul(camera.cameraToWorld, depthMatTexture[xy]);
-        }
-        else
-        {
-            pos = ray.origin + ray.dir * isect.t;
-        }
+        pos = ray.origin + ray.dir * isect.t;
+        biasHitPos(pos, isect.normal);
+        
         float pdf = 1;
         
         //MIS, assume parallel light
