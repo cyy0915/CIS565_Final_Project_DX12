@@ -65,6 +65,15 @@ HSH Coefficient compute    |  Ray Tracing  (4 FPS)
 ![](img/sdf/HSH_1.png)        |  ![](img/sdf/HSH_2.png)
 
 
+### `Small trick to soften the shadow`
+Notice that the shadow of the parallel light must be related to 3D ray marching (we don't know if there are objects over the screen space), so the shape of the shadow is always jagged because of the voxel based SDF.
+
+To soften the shadow, we randomly bias the start position of a new ray after a bounce in a small range of planar perpendicular to the normal.
+
+Hard shadow  |  Soft shadow
+:-------------------------:|:-------------------------:
+![](img/ss/hard.png)        |  ![](img/ss/soft.png)
+
 # Performance Analysis
 
 ### How much faster is ray marching with SDF comparing to ray tracing with BVH?
